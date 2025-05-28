@@ -1,0 +1,45 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36121.58 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dlw.Optimizely.SDS", "src\Dlw.Optimizely.SDS\Dlw.Optimizely.SDS.csproj", "{3F3AB67C-E49F-2EE9-0E4B-E6DE9FB8260B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dlw.Optimizely.SDS.Shared", "src\Dlw.Optimizely.SDS.Shared\Dlw.Optimizely.SDS.Shared.csproj", "{7346E8E0-3742-A3F9-9868-C4D30FC0836B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dlw.Optimizely.SDS.Embedded", "src\Dlw.Optimizely.SDS.Embedded\Dlw.Optimizely.SDS.Embedded.csproj", "{25FCAA60-E6E4-AA4E-063F-DDDEE2768B9A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		Directory.Packages.props = Directory.Packages.props
+		license.txt = license.txt
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3F3AB67C-E49F-2EE9-0E4B-E6DE9FB8260B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F3AB67C-E49F-2EE9-0E4B-E6DE9FB8260B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F3AB67C-E49F-2EE9-0E4B-E6DE9FB8260B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F3AB67C-E49F-2EE9-0E4B-E6DE9FB8260B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7346E8E0-3742-A3F9-9868-C4D30FC0836B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7346E8E0-3742-A3F9-9868-C4D30FC0836B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7346E8E0-3742-A3F9-9868-C4D30FC0836B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7346E8E0-3742-A3F9-9868-C4D30FC0836B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25FCAA60-E6E4-AA4E-063F-DDDEE2768B9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25FCAA60-E6E4-AA4E-063F-DDDEE2768B9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25FCAA60-E6E4-AA4E-063F-DDDEE2768B9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25FCAA60-E6E4-AA4E-063F-DDDEE2768B9A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4B6472A4-2EFA-4E7A-98B0-F9DB98F4F184}
+	EndGlobalSection
+EndGlobal
