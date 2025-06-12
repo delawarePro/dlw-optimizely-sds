@@ -4,6 +4,10 @@
 
 The **Embedded Sitemap Discovery Service**  is a tool designed to create sitemaps for any Optimizely project. It helps **improve SEO** by generating XML sitemaps that search engines can use to index your site(s) more effectively.
 
+## Optimizely NuGet feed
+
+Packages for the Optimizely NuGet feed are currently built against a private version of this repo. A final move to this repo is on the roadmap.
+
 ## Features
 
 - Automatically pre-generates XML sitemaps
