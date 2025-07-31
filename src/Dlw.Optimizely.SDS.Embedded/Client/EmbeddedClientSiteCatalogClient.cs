@@ -1,7 +1,6 @@
 ﻿using Dlw.Optimizely.Sds.Publishing;
 using Dlw.Optimizely.SDS.Client;
 using Dlw.Optimizely.SDS.Shared.Models;
-using Dlw.Optimizely.SDS.Shared.Utilities;
 using EPiServer.Core;
 using EPiServer.Data;
 using EPiServer.Data.Dynamic;

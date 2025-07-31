@@ -13,7 +13,8 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
 
     public DefaultSiteCatalogBlockProvider(
         IContentLoader contentLoader,
-        SiteDefinition siteDefinition) : base(contentLoader)
+        IContentLanguageSettingsHandler contentLanguageSettingsHandler,
+        SiteDefinition siteDefinition) : base(contentLoader, contentLanguageSettingsHandler)
     {
         _siteDefinition = siteDefinition;
     }

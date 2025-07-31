@@ -3,13 +3,12 @@ using EPiServer.Core;
 
 namespace Dlw.Optimizely.Sds.Publishing.ContentProviders;
 
-public class DefaultSiteCatalogPageProvider : SiteCatalogContentProviderBase, ISiteCatalogPageProvider
+public class DefaultSiteCatalogPageProvider(
+    IContentLoader contentLoader,
+    IContentLanguageSettingsHandler contentLanguageSettingsHandler)
+    : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogPageProvider
 {
-    public DefaultSiteCatalogPageProvider(IContentLoader contentLoader) : base(contentLoader)
-    {
-    }
-
-    public async Task<SiteCatalogItemsResult> GetPages(ContentReference root, string? next, IOperationContext context)
+    public virtual async Task<SiteCatalogItemsResult> GetPages(ContentReference root, string? next, IOperationContext context)
     {
         // Skip if specified.
         int? skip = null;

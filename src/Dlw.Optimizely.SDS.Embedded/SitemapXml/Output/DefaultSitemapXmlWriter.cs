@@ -8,7 +8,7 @@ namespace Dlw.Optimizely.SDS.Embedded.SitemapXml.Output
     public class DefaultSitemapXmlWriter : ISitemapXmlWriter
     {
         private const string SitemapNs = "http://www.sitemaps.org/schemas/sitemap/0.9";
-        private const string XhtmlNs = "http://www.w3.org/TR/xhtml11/xhtml11_schema.html";
+        private const string XhtmlNs = "http://www.w3.org/1999/xhtml";
 
         public async Task WriteSitemapIndex(SitemapIndex index, Stream output)
         {
@@ -93,7 +93,7 @@ namespace Dlw.Optimizely.SDS.Embedded.SitemapXml.Output
 
         protected virtual void Write(LanguageAlternative alternative, XmlWriter writer)
         {
-            writer.WriteStartElement("xhtml", "link", XhtmlNs);
+            writer.WriteStartElement("xhtml", "link");
 
             writer.WriteAttributeString("rel", "alternate");
             writer.WriteAttributeString("hreflang", alternative.Language);

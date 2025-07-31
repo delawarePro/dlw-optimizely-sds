@@ -65,15 +65,6 @@ public class DefaultSiteCatalogEntryMapper : AbstractSiteCatalogEntryMapper
         var path = url?.IsAbsoluteUri == true ? url.PathAndQuery : url?.ToString();
         var isStartPage = path != null && path.Equals($"/{locale}", StringComparison.OrdinalIgnoreCase);
 
-        if (content is ILocalizable localizable)
-        {
-            if (!localizable.ExistingLanguages.Any(el =>
-                    el.Name.Equals(locale, StringComparison.InvariantCultureIgnoreCase)))
-            {
-                return;
-            }
-        }
-
         if (string.IsNullOrEmpty(path))
         {
             return;

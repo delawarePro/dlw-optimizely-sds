@@ -110,7 +110,6 @@ public class DeltaSiteCatalogJob : ScheduledJobBase
             msg = $"Processing delta for site {siteName}";
             msgBuilder.AppendLine(msg);
 
-
             // Determine time from which to try to find updates.
             var time = state.LastDeltaGenerationUtc ?? state.LastFullGenerationUtc ?? DateTime.MinValue;
             var updates = _embeddedSiteCatalogClient.GetCatalogUpdates(context, siteName, time);
