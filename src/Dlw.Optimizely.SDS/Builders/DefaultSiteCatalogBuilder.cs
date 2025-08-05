@@ -31,7 +31,8 @@ public class DefaultSiteCatalogBuilder : ISiteCatalogBuilder
     {
         WithDefaultBlocks()
             .WithDefaultFilters()
-            .WithDefaultMapping();
+            .WithDefaultMapping()
+            .WithDefaultPageProvider();
     }
 
     public ISiteCatalogBuilder WithDefaultMapping()
@@ -96,8 +97,9 @@ public class DefaultSiteCatalogBuilder : ISiteCatalogBuilder
     public ISiteCatalogBuilder WithDefaultBlocks()
     {
         var contentLoader = _serviceProvider.GetRequiredService<IContentLoader>();
+        var contentLanguageSettingsHandler = _serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, _siteDefinition));
+        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, _siteDefinition));
 
         return this;
     }
@@ -110,18 +112,41 @@ public class DefaultSiteCatalogBuilder : ISiteCatalogBuilder
         }
 
         var contentLoader = _serviceProvider.GetRequiredService<IContentLoader>();
-        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLoader, blockRoots);
+        var contentLanguageSettingsHandler = _serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
+        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLoader, contentLanguageSettingsHandler, blockRoots);
 
         _blockReferencesProviders.Add(provider);
 
         return this;
     }
 
+    public ISiteCatalogBuilder WithDefaultPageProvider()
+    {
+        if (PageProvider != null)
+        {
+            throw new Exception($"There already is a page provider registered, of type {PageProvider.GetType().Name}.");
+        }
+
+        PageProvider = _serviceProvider.GetRequiredService<ISiteCatalogPageProvider>();
+        return this;
+    }
+
+    public ISiteCatalogBuilder WithPageProvider(ISiteCatalogPageProvider pageProvider)
+    {
+        if (PageProvider != null)
+        {
+            throw new Exception($"There already is a page provider registered, of type {PageProvider.GetType().Name}.");
+        }
+
+        PageProvider = pageProvider ?? throw new ArgumentNullException(nameof(pageProvider), "Page provider cannot be null.");
+        return this;
+    }
+
     public ISiteCatalog Build()
     {
-        var pageProvider = PageProvider ?? _serviceProvider.GetRequiredService<ISiteCatalogPageProvider>();
+        var pageProvider = PageProvider ?? throw new NullReferenceException($"No page provider registered for '{_siteDefinition.Name}' site catalog.");
         var defaultMapper = DefaultEntryMapper ?? throw new NullReferenceException($"No default mapping provided for '{_siteDefinition.Name}' site catalog.");
-        
+
         return new SiteCatalog(_siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders);
     }
 }

@@ -4,17 +4,15 @@ using EPiServer.Core;
 
 namespace Dlw.Optimizely.Sds.Publishing.ContentProviders;
 
-public abstract class SiteCatalogContentProviderBase
+public abstract class SiteCatalogContentProviderBase(
+    IContentLoader contentLoader,
+    IContentLanguageSettingsHandler contentLanguageSettingsHandler)
 {
     protected const int DefaultBatchSize = 100;
-    protected readonly IContentLoader ContentLoader;
+    protected readonly IContentLoader ContentLoader = contentLoader;
+    protected readonly IContentLanguageSettingsHandler ContentLanguageSettingsHandler = contentLanguageSettingsHandler;
 
-    protected SiteCatalogContentProviderBase(IContentLoader contentLoader)
-    {
-        ContentLoader = contentLoader;
-    }
-
-    public Task<IReadOnlyCollection<SiteCatalogItem>> GetContent(params IContent[] contentItems)
+    public virtual Task<IReadOnlyCollection<SiteCatalogItem>> GetContent(params IContent[] contentItems)
     {
         var items = contentItems
             .Select(x => new SiteCatalogItem(x))
@@ -39,26 +37,55 @@ public abstract class SiteCatalogContentProviderBase
             .Where(x => x != null)
             .Select(x => x!.Value)
             .SelectMany(
-                x => x.localized.ExistingLanguages,
-                (item, cultureInfo) => !cultureInfo.Equals(item.localized.Language)
-                    ? new KeyValuePair<CultureInfo, ContentReference>(cultureInfo, item.Key)
-                    : (KeyValuePair<CultureInfo, ContentReference>?)null)
+                x => DetermineCultureInfos(x.Key, x.localized)/*x.localized.ExistingLanguages*/,
+                (item, lang) => !lang.Equals(item.localized.Language.Name, StringComparison.InvariantCultureIgnoreCase)
+                    ? new KeyValuePair<string, ContentReference>(lang, item.Key)
+                    : (KeyValuePair<string, ContentReference>?)null)
             .Where(x => x != null)
             .GroupBy(x => x!.Value.Key, x => x!.Value);
 
         // Load content by culture & map data to localized site entry.
         foreach (var group in contentLinksByCulture)
         {
+            var cultureInfoForGroup = CultureInfo.GetCultureInfo(group.Key);
             var contentLinks = group.Select(x => x.Value).ToArray();
-            var items = ContentLoader.GetItems(contentLinks, group.Key);
+            var languageLoaderOption = new LoaderOptions { LanguageLoaderOption.Fallback(cultureInfoForGroup) };
+            var items = ContentLoader.GetItems(contentLinks, languageLoaderOption);
 
             foreach (var item in items)
             {
                 if (!itemPerId.TryGetValue(item.ContentLink.ToReferenceWithoutVersion(), out var contentItem) || item is not ILocalizable localized)
                     continue;
 
-                contentItem.Localized[localized.Language.Name] = item;
+                contentItem.Localized[cultureInfoForGroup.Name] = item;
             }
         }
+    }
+
+    /// <summary>
+    /// Determine the languages a given content item will resolve content in:
+    /// * by direct language version
+    /// * by language fallback setting
+    /// </summary>
+    protected virtual IReadOnlyCollection<string> DetermineCultureInfos(
+        ContentReference forContent,
+        ILocalizable? localizable)
+    {
+        var result = new HashSet<string>();
+
+        if (localizable != null)
+        {
+            foreach (var asLocalizableExistingLanguage in localizable.ExistingLanguages)
+            {
+                result.Add(asLocalizableExistingLanguage.Name);
+            }
+        }
+
+        foreach (var fallback in ContentLanguageSettingsHandler.Get(forContent))
+        {
+            result.Add(fallback.LanguageBranch);
+        }
+
+        return result;
     }
 }

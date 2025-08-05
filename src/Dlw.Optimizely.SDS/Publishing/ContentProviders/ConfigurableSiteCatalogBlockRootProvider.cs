@@ -6,16 +6,12 @@ namespace Dlw.Optimizely.Sds.Publishing.ContentProviders;
 /// <summary>
 /// This <see cref="ISiteCatalogBlockProvider"/> allows to register one or more block roots to be iterated over when publishing sitemaps.
 /// </summary>
-public class ConfigurableSiteCatalogBlockRootProvider : SiteCatalogContentProviderBase, ISiteCatalogBlockProvider
+public class ConfigurableSiteCatalogBlockRootProvider(
+    IContentLoader contentLoader,
+    IContentLanguageSettingsHandler contentLanguageSettingsHandler,
+    IList<ContentReference> blockRoots)
+    : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogBlockProvider
 {
-    private readonly IList<ContentReference> _blockRoots;
-
-    public ConfigurableSiteCatalogBlockRootProvider(IContentLoader contentLoader, IList<ContentReference> blockRoots)
-        : base(contentLoader)
-    {
-        _blockRoots = blockRoots;
-    }
-
     public async Task<SiteCatalogItemsResult> GetBlocks(string? next, IOperationContext context)
     {
         // Skip if specified.
@@ -28,7 +24,7 @@ public class ConfigurableSiteCatalogBlockRootProvider : SiteCatalogContentProvid
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
-        var root = _blockRoots
+        var root = blockRoots
             .Skip(skip.GetValueOrDefault())
             .FirstOrDefault();
 
@@ -52,13 +48,13 @@ public class ConfigurableSiteCatalogBlockRootProvider : SiteCatalogContentProvid
             : null;
 
         // Note! Skip is the number of block roots already processed.
-        skip = skip + 1 >= _blockRoots.Count ? null : skip.GetValueOrDefault(0) + 1;
+        skip = skip + 1 >= blockRoots.Count ? null : skip.GetValueOrDefault(0) + 1;
 
         return new SiteCatalogItemsResult(pages, skip?.ToString());
     }
 
     public IList<int> GetBlockRoots()
     {
-        return _blockRoots.Select(c => c.ID).ToList();
+        return blockRoots.Select(c => c.ID).ToList();
     }
 }

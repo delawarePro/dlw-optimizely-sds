@@ -84,7 +84,7 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
                         multiplication.Variables[SharedSdsConstants.LanguageVariable] = expandedLanguage;
 
                         var alternativeLocation = GenerateLocation(resource, config, multiplication.Variables, expandedLanguage);
-                        if (alternativeLocation == null) continue;
+                        if (alternativeLocation == null || languageAlternatives.Any(la => la.Location.Equals(alternativeLocation))) continue;
 
                         languageAlternatives.Add(new LanguageAlternative(expandedLanguage, alternativeLocation));
                     }

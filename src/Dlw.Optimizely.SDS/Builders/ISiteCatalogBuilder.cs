@@ -1,4 +1,5 @@
 ﻿using Dlw.Optimizely.Sds.Publishing;
+using Dlw.Optimizely.Sds.Publishing.ContentProviders;
 using Dlw.Optimizely.Sds.Publishing.Mappers;
 using EPiServer.Core;
 
@@ -57,4 +58,14 @@ public interface ISiteCatalogBuilder
     /// <param name="blockRoots"></param>
     /// <returns></returns>
     ISiteCatalogBuilder WithBlockRoots(IList<ContentReference>? blockRoots);
+
+    /// <summary>
+    /// Adds the default <see cref="DefaultSiteCatalogPageProvider"/>.
+    /// </summary>
+    ISiteCatalogBuilder WithDefaultPageProvider();
+
+    /// <summary>
+    /// Registers a custom <see cref="ISiteCatalogPageProvider"/> implementation instead of the default <see cref="DefaultSiteCatalogPageProvider"/>.
+    /// </summary>
+    ISiteCatalogBuilder WithPageProvider(ISiteCatalogPageProvider pageProvider);
 }
