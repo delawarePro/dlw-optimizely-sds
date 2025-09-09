@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Embedded Sitemap Discovery Service**  is a tool designed to create sitemaps for any Optimizely project. It helps **improve SEO** by generating XML sitemaps that search engines can use to index your site(s) more effectively.
+The **Embedded Site Discovery Service**  is a tool designed to create sitemaps for any Optimizely project. It helps **improve SEO** by generating XML sitemaps that search engines can use to index your site(s) more effectively.
 
 ## Optimizely NuGet feed
 
