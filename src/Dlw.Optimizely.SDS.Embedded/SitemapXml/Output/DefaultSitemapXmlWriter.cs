@@ -10,7 +10,9 @@ public class DefaultSitemapXmlWriter : ISitemapXmlWriter
     private const string _sitemapNs = "http://www.sitemaps.org/schemas/sitemap/0.9";
     private const string _xhtmlNs = "http://www.w3.org/1999/xhtml/";
     private const string _xsiNs = "http://www.w3.org/2001/XMLSchema-instance";
-    private const string _schemaLocation = "http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd http://www.w3.org/1999/xhtml http://www.w3.org/2002/08/xhtml/xhtml1-strict.xsd";
+    private const string _schemaLocation = "http://www.sitemaps.org/schemas/sitemap/0.9 " +
+                                           "http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd " +
+                                           "http://www.w3.org/1999/xhtml http://www.w3.org/2002/08/xhtml/xhtml1-strict.xsd";
 
     public async Task WriteSitemapIndex(SitemapIndex index, Stream output)
     {
