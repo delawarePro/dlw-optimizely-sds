@@ -1,4 +1,5 @@
-﻿using Dlw.Optimizely.Sds;
+﻿using System.Xml;
+using Dlw.Optimizely.Sds;
 using Dlw.Optimizely.Sds.Publishing;
 using Dlw.Optimizely.SDS.Client;
 using Dlw.Optimizely.SDS.Embedded.Client;
@@ -135,11 +136,13 @@ internal class DefaultSitemapGeneratorService(
                 .ToList();
 
             using var memory = new MemoryStream();
+            var xmlWriterSettings = sitemapXmlWriter.GetSettings(true);
+            await using var xmlWriter = XmlWriter.Create(memory, xmlWriterSettings);
 
             // Write the XML.
-            await sitemapXmlWriter.WriteSitemapHeader(memory);
-            await sitemapXmlWriter.WriteUrls(batch.SelectMany(x => x.Urls), memory);
-            await sitemapXmlWriter.WriteSitemapFooter(memory);
+            await sitemapXmlWriter.WriteSitemapHeader(memory, xmlWriter);
+            await sitemapXmlWriter.WriteUrls(batch.SelectMany(x => x.Urls), memory, xmlWriter);
+            await sitemapXmlWriter.WriteSitemapFooter(memory, xmlWriter);
 
             // Reset the stream position.
             memory.Seek(0, SeekOrigin.Begin);

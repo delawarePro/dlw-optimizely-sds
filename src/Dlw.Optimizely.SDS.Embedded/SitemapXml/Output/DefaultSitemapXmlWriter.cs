@@ -3,123 +3,122 @@ using System.Xml;
 using Dlw.Optimizely.SDS.Embedded.SitemapXml.Models;
 using Dlw.Optimizely.SDS.Shared.Models;
 
-namespace Dlw.Optimizely.SDS.Embedded.SitemapXml.Output
+namespace Dlw.Optimizely.SDS.Embedded.SitemapXml.Output;
+
+public class DefaultSitemapXmlWriter : ISitemapXmlWriter
 {
-    public class DefaultSitemapXmlWriter : ISitemapXmlWriter
+    private const string _sitemapNs = "http://www.sitemaps.org/schemas/sitemap/0.9";
+    private const string _xhtmlNs = "http://www.w3.org/1999/xhtml/";
+    private const string _xsiNs = "http://www.w3.org/2001/XMLSchema-instance";
+    private const string _schemaLocation = "http://www.sitemaps.org/schemas/sitemap/0.9 " +
+                                           "http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd " +
+                                           "http://www.w3.org/1999/xhtml http://www.w3.org/2002/08/xhtml/xhtml1-strict.xsd";
+
+    public async Task WriteSitemapIndex(SitemapIndex index, Stream output)
     {
-        private const string SitemapNs = "http://www.sitemaps.org/schemas/sitemap/0.9";
-        private const string XhtmlNs = "http://www.w3.org/1999/xhtml";
+        var settings = GetSettings(startNewFile: true);
 
-        public async Task WriteSitemapIndex(SitemapIndex index, Stream output)
+        await using var xmlWriter = XmlWriter.Create(output, settings);
+
+        await xmlWriter.WriteStartDocumentAsync();
+
+        xmlWriter.WriteStartElement("sitemapindex", _sitemapNs);
+
+        foreach (var sitemap in index.Sitemaps)
         {
-            var settings = GetSettings(startNewFile: true);
+            xmlWriter.WriteStartElement("sitemap");
 
-            await using var xmlWriter = XmlWriter.Create(output, settings);
+            Write(sitemap, xmlWriter);
 
-            await xmlWriter.WriteStartDocumentAsync();
+            await xmlWriter.WriteEndElementAsync();
+        }
 
-            xmlWriter.WriteStartElement("sitemapindex", SitemapNs);
+        await xmlWriter.WriteEndElementAsync();
 
-            foreach (var sitemap in index.Sitemaps)
-            {
-                xmlWriter.WriteStartElement("sitemap");
+        await xmlWriter.WriteEndDocumentAsync();
 
-                Write(sitemap, xmlWriter);
+        await xmlWriter.FlushAsync();
+    }
 
-                await xmlWriter.WriteEndElementAsync();
-            }
+    public async Task WriteSitemapHeader(Stream output, XmlWriter xmlWriter)
+    {
+        await xmlWriter.WriteStartDocumentAsync();
+
+        xmlWriter.WriteStartElement("urlset", _sitemapNs);
+        await xmlWriter.WriteAttributeStringAsync("xmlns", "xhtml", null, _xhtmlNs);
+        await xmlWriter.WriteAttributeStringAsync("xmlns", "xsi", null, _xsiNs);
+        await xmlWriter.WriteAttributeStringAsync("xsi", "schemaLocation", _xsiNs, _schemaLocation);
+
+        await xmlWriter.WriteRawAsync("\n");
+
+        await xmlWriter.FlushAsync();
+    }
+
+    public async Task WriteSitemapFooter(Stream output, XmlWriter xmlWriter)
+    {
+        await xmlWriter.WriteRawAsync("\n</urlset>");
+        await xmlWriter.FlushAsync();
+    }
+
+    public async Task WriteUrls(IEnumerable<Url> urls, Stream output, XmlWriter xmlWriter)
+    {
+        foreach (var url in urls)
+        {
+            xmlWriter.WriteStartElement("url");
+
+            Write(url, xmlWriter);
 
             await xmlWriter.WriteEndElementAsync();
 
-            await xmlWriter.WriteEndDocumentAsync();
-
             await xmlWriter.FlushAsync();
         }
+    }
 
-        public async Task WriteSitemapHeader(Stream output)
+    protected virtual void Write<T>(T url, XmlWriter writer)
+        where T : AbstractUrl
+    {
+        writer.WriteElementString("loc", url.Location);
+
+        if (url.Modified.HasValue)
+            writer.WriteElementString("lastmod", url.Modified.Value.ToString("O"));
+
+        if (url is Shared.Models.Url fullUrl)
         {
-            var settings = GetSettings(startNewFile: true);
-
-            await using var xmlWriter = XmlWriter.Create(output, settings);
-            await xmlWriter.WriteStartDocumentAsync();
-
-            xmlWriter.WriteStartElement("urlset", SitemapNs);
-            await xmlWriter.WriteAttributeStringAsync("xmlns", "xhtml", null, XhtmlNs);
-
-            await xmlWriter.WriteRawAsync("\n");
-
-            await xmlWriter.FlushAsync();
-        }
-
-        public async Task WriteSitemapFooter(Stream output)
-        {
-            await using var xmlWriter = XmlWriter.Create(output, GetSettings());
-            await xmlWriter.WriteRawAsync("\n</urlset>");
-            await xmlWriter.FlushAsync();
-        }
-
-        public async Task WriteUrls(IEnumerable<Shared.Models.Url> urls, Stream output)
-        {
-            await using var xmlWriter = XmlWriter.Create(output, GetSettings());
-
-            foreach (var url in urls)
+            foreach (var alternative in fullUrl.LanguageAlternatives ?? Enumerable.Empty<LanguageAlternative>())
             {
-                xmlWriter.WriteStartElement("url");
-
-                Write(url, xmlWriter);
-
-                await xmlWriter.WriteEndElementAsync();
-
-                await xmlWriter.FlushAsync();
+                Write(alternative, writer);
             }
         }
+    }
 
-        protected virtual void Write<T>(T url, XmlWriter writer)
-            where T : AbstractUrl
+    protected virtual void Write(LanguageAlternative alternative, XmlWriter writer)
+    {
+        writer.WriteStartElement("xhtml", "link", _xhtmlNs);
+
+        writer.WriteAttributeString("rel", "alternate");
+        writer.WriteAttributeString("hreflang", alternative.Language);
+        writer.WriteAttributeString("href", alternative.Location);
+
+        writer.WriteEndElement();
+    }
+
+    public virtual XmlWriterSettings GetSettings(bool startNewFile = false)
+    {
+        return new XmlWriterSettings
         {
-            writer.WriteElementString("loc", url.Location);
+            Async = true,
+            CloseOutput = false,
 
-            if (url.Modified.HasValue)
-                writer.WriteElementString("lastmod", url.Modified.Value.ToString("O"));
+            // Only write encoding Byte Order Mark when starting a new file.
+            Encoding = startNewFile ? Encoding.UTF8 : new UTF8Encoding(false),
 
-            if (url is Shared.Models.Url fullUrl)
-            {
-                foreach (var alternative in fullUrl.LanguageAlternatives ?? Enumerable.Empty<LanguageAlternative>())
-                {
-                    Write(alternative, writer);
-                }
-            }
-        }
+            OmitXmlDeclaration = !startNewFile,
 
-        protected virtual void Write(LanguageAlternative alternative, XmlWriter writer)
-        {
-            writer.WriteStartElement("xhtml", "link");
+            // We need document to write the xml declaration.
+            ConformanceLevel = startNewFile ? ConformanceLevel.Document : ConformanceLevel.Fragment,
 
-            writer.WriteAttributeString("rel", "alternate");
-            writer.WriteAttributeString("hreflang", alternative.Language);
-            writer.WriteAttributeString("href", alternative.Location);
-
-            writer.WriteEndElement();
-        }
-
-        protected virtual XmlWriterSettings GetSettings(bool startNewFile = false)
-        {
-            return new XmlWriterSettings
-            {
-                Async = true,
-                CloseOutput = false,
-
-                // Only write encoding Byte Order Mark when starting a new file.
-                Encoding = startNewFile ? Encoding.UTF8 : new UTF8Encoding(false),
-
-                OmitXmlDeclaration = !startNewFile,
-
-                // We need document to write the xml declaration.
-                ConformanceLevel = startNewFile ? ConformanceLevel.Document : ConformanceLevel.Fragment,
-
-                Indent = true,
-                WriteEndDocumentOnClose = false
-            };
-        }
+            Indent = true,
+            WriteEndDocumentOnClose = false
+        };
     }
 }
