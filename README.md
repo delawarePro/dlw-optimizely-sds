@@ -1,4 +1,4 @@
-﻿# Embedded SDS
+﻿# delaware sitemaps
 
 ## Overview
 
@@ -20,7 +20,7 @@ Packages for the Optimizely NuGet feed are currently built against a private ver
 
 Install the NuGet package, currently available from the Platina feed:
 
-    Install-Package Dlw.Optimizely.Sds.Embedded
+    Install-Package Delaware.Optimizely.Sitemap
 
 ## Configuration
 
@@ -29,7 +29,7 @@ Install the NuGet package, currently available from the Platina feed:
 Add the following line to your service configuration setup:
 
     services
-        .AddSds(Configuration /* IConfiguration */)
+        .AddSitemap(Configuration /* IConfiguration */)
 
 ... with the optional registration of dynamic content processors (for more details, see __Dynamic content__)
 
@@ -39,32 +39,32 @@ Add the following line to your service configuration setup:
 ... and the following line to the Middleware setup:
 
     app
-        .ConfigureSds();
+        .ConfigureSitemap();
 
-This enables the SDS code. The next section shows how to configure this per site.
+This enables the Sitemap code. The next section shows how to configure this per site.
 
 ## Site configuration
 
-The SDS can be enabled per site instance. Add this for each site to enable Sds, where _site_ is a site definition:
+The Sitemap can be enabled per site instance. Add this for each site to enable Sitemap, where _site_ is a site definition:
 
     serviceProvider
-        .AddEmbeddedSdsCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
+        .AddEmbeddedSitemapCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
 
 This configures the site catalog with all defaults.
 
 ### Customizations
 
-If the default settings don't cover all required Sds scenarios, the defaults to pick from in code are:
+If the default settings don't cover all required Sitemap scenarios, the defaults to pick from in code are:
 
     serviceProvider
-        .AddSdsCatalog(site, new [] { /* languages for site */ "en", "nl-be" }
+        .AddSitemapCatalog(site, new [] { /* languages for site */ "en", "nl-be" }
              catalog => catalog
             .WithDefaultBlocks()
-            .WithDefaultStorage()
             .WithDefaultMapping()
             .WithBlockRoots(BlockRoots)
-            .WithDefaultFilters())
-        .WithEmbeddedSdsSitemap(site, languages);
+            .WithDefaultFilters()
+            .WithDefaultPageProvider())
+        .WithEmbeddedSitemap(site, languages);
 
 #### WithDefaultBlocks
 
@@ -86,17 +86,23 @@ By default, the indexing will happen on the _For this site_ folder for the site.
 
 ### WithDefaultFilters
 
-**WithDefaultFilters** makes sure content which is marked with the _IExcludeFromSds_ interface is excluded from sitemap indexing and blocks of a derived type of type _MediaData_ are excluded.
+**WithDefaultFilters** makes sure content which is marked with the _IExcludeFromSitemap_ interface is excluded from sitemap indexing and blocks of a derived type of type _MediaData_ are excluded.
 
 This can be extended (or replaced) by:
 
     WithPageFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
     WithBlockFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
 
+### WithDefaultPageProvider
+
+**WithDefaultPageProvider** registers a default implementation for retrieving localized variants of the content. To customize this, register a custom _ISiteCatalogPageProvider_ implementation instead:
+
+    WithPageProvider(ISiteCatalogPageProvider pageProvider)
+
 ## Exclude content
 
 Exclude content of a given content type from being processed, is achieved by marking that content type
-with interface _IExcludeFromSds_.
+with interface _IExcludeFromSitemap_.
 
 ## Dynamic content
 
@@ -131,21 +137,21 @@ Tip: check if the processor can handle this combination as soon as possible. If 
 
 In case there is a need to have a different entry path than /sitemap.xml, configure the following app setting:
 
-      "Sds": {
-        "Embedded":{
+      "Delaware": {
+        "Sitemaps":{
             "SitemapEntryPath": "/sitemap.xml"
         }
       }
 
-This would allow to validate and test the Embedded Sds next to an existing setup.
+This would allow to validate and test the Embedded Sitemap next to an existing setup.
 
 ## Usage
 
-By default, enabling SDS registers **3 scheduled jobs**:
+By default, enabling Sitemap registers **3 scheduled jobs**:
 
-* A **full indexing job** which only publishes the site catalogs - disabled by default. Enable this job with using the full setup of SDS, not the embedded!
+* A **full indexing job** which only publishes the site catalogs - disabled by default. Enable this job with using the full setup of Sitemap, not the embedded!
 * A **full indexing job with sitemap generation** which does the same as the above but adds generated sitemap.xml files on top. Enabled by default.
-* A **delta processing job** (for embedded SDS) which creates sitemap pages for updates since the last full indexing job ran. This job runs hourly by default.
+* A **delta processing job** (for embedded Sitemap) which creates sitemap pages for updates since the last full indexing job ran. This job runs hourly by default.
 
 When adjusting the time interval for these jobs, make sure the interval for the delta job is smaller than the interval for the full indexing job.
 
