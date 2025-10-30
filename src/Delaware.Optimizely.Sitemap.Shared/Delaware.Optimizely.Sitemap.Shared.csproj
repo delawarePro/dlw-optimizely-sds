@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Depend on 'EPiServer.CMS.UI.Core' because it has a range dependency on 'EPiServer.CMS.Core'.
+         Even though we don't need anything specifically on this package.
+         For now we chose to use 'EPiServer.CMS.UI.Core' because normally usages of this package should depend on this package anyway. -->
+    <PackageReference Include="EPiServer.CMS.UI.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Delaware.Optimizely.Sitemap" />
+    <InternalsVisibleTo Include="Delaware.Optimizely.Sitemap.Core" />
+  </ItemGroup>
+
+</Project>
