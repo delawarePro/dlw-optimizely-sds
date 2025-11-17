@@ -10,6 +10,11 @@ on:
             - "releases/**"
             - "prereleases/**"
 
+    # temporary: to be removed:
+    push:
+        branches:
+            - "feature/platina-feed"
+
     workflow_dispatch:
         inputs:
             noTests:
@@ -33,7 +38,8 @@ jobs:
               id: "conventions"
               with:
                   noTests: ${{ inputs.noTests }}
-                  prerelease: ${{ inputs.prerelease }} 
+                  prerelease: "test-github" # remove when OK.
+                  #prerelease: ${{ inputs.prerelease }} 
 
             # Use 'master' branch for now. There is no release yet.
             - uses: chanw/platina-scripts/github/actions/dotnet-ci@feature/dotnet-10
