@@ -1,0 +1,97 @@
+<!-- See https://whereslou.com/2018/09/versioning-and-publishing-nuget-packages-automatically-using-azure-devops-pipelines/ 
+     File largely based on delaware Platina's Nuget.props.
+-->
+<Project>
+  <PropertyGroup>
+    <!-- 
+      Edit this value to change the current major.minor version.
+      Default to 0.1 version to indicate that library might not be ready to be used.
+    -->
+    <VersionPrefix Condition=" '$(VersionPrefix)' == '' ">0.1</VersionPrefix>
+  </PropertyGroup>
+
+  <Choose>
+    <!-- Running in Azure DevOps Pipelines -->
+    <!-- See: https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#system-variables -->
+    <When Condition=" '$(TF_BUILD)' == 'true' ">
+      <PropertyGroup Condition=" '$(BUILD_BUILDID)' != '' ">
+        <!-- 
+          Append the ever incrementing build number if it is available.
+          In some projects the BUILID is more than the max value of UInt16,
+          this results in build error: error CS7035 The specified version string '...' does not conform to the recommended format - major.minor.build.revision
+          We take the modulo so that we're backwards compatible and don't run into max number issues.
+          We assume that major or minor version will be changed between 65535 builds.
+          PS: don't enter line breaks in the <versionprefix> value!
+        -->
+        <VersionPrefix>$(VersionPrefix).$([MSBuild]::Modulo($([System.Convert]::ToInt64($([System.Environment]::GetEnvironmentVariable("BUILD_BUILDID")))), 65535))</VersionPrefix>
+        <!-- To support re-running CI jobs we append the JOBATTEMPT as a revision after the initial run (e.g. run #1).
+             PS: don't enter line breaks in the <versionprefix> value! -->
+        <VersionPrefix Condition=" '$(SYSTEM_JOBATTEMPT)' != '' And '$(SYSTEM_JOBATTEMPT)' != '1' ">$(VersionPrefix).$([MSBuild]::Subtract($([System.Convert]::ToInt64($([System.Environment]::GetEnvironmentVariable("SYSTEM_JOBATTEMPT")))), 1))</VersionPrefix>
+      </PropertyGroup>
+
+      <PropertyGroup>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+      </PropertyGroup>
+    </When>
+
+    <!-- Running in Github Actions-->
+    <!-- See: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables -->
+    <When Condition=" '$(GITHUB_ACTIONS)' == 'true' ">
+      <PropertyGroup Condition=" '$(GITHUB_RUN_NUMBER)' != '' ">
+        <!-- 
+          Append the ever incrementing build number if it is available.
+          In some projects the BUILID is more than the max value of UInt16,
+          this results in build error: error CS7035 The specified version string '...' does not conform to the recommended format - major.minor.build.revision
+          We take the modulo so that we're backwards compatible and don't run into max number issues.
+          We assume that major or minor version will be changed between 65535 builds.
+        -->
+        <VersionPrefix>$(VersionPrefix).$([MSBuild]::Modulo($([System.Convert]::ToInt64($([System.Environment]::GetEnvironmentVariable("GITHUB_RUN_NUMBER")))), 65535))</VersionPrefix>
+        <!-- To support re-running CI jobs we append the GITHUB_RUN_NUMBER as a revision after the initial run (e.g. run #1). -->
+        <VersionPrefix Condition=" '$(GITHUB_RUN_ATTEMPT)' != '' And '$(GITHUB_RUN_ATTEMPT)' != '1' ">$(VersionPrefix).$([MSBuild]::Subtract($([System.Convert]::ToInt64($([System.Environment]::GetEnvironmentVariable("GITHUB_RUN_ATTEMPT")))), 1))</VersionPrefix>
+      </PropertyGroup>
+
+      <PropertyGroup>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  
+  <PropertyGroup>
+    <!-- Common NuGet package properties. -->
+    <Copyright>Copyright © $([System.DateTime]::Now.ToString(yyyy))</Copyright>
+    <Company>delaware</Company>
+    <Authors>delaware</Authors>
+
+    <!-- NuGet debug support. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Include xml comments in nugets. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <Choose>
+    <!-- 
+      Include prerelease tag in package version.
+      Prerelease version numbers are MAJOR.MINOR.#build(.#optional-revision)-prerelease so that we can easily generate a prerelease for a PR. 
+    -->
+    <When Condition=" '$(Prerelease)' != '' ">
+      <PropertyGroup>
+        <VersionSuffix>$(Prerelease)</VersionSuffix>
+      </PropertyGroup>
+    </When>
+    
+    <!-- 
+      Our default CI pipeline packages nugets before testing, we do this to test the packaging during a CI build.
+      When the project references a prerelease nuget, the packaging fails because it's not packaging as a prerelease.
+      The error we get: error NU5104: Warning As Error: A stable release of a package should not have a prerelease dependency.
+      So we package a prerelease by default, if we're not releasing for e.g. a main branch (only on build server).
+    -->
+    <When Condition=" '$(ContinuousIntegrationBuild)' == 'true' And '$(Prerelease)' == '' And $(WithRelease) != 'true' ">
+      <PropertyGroup>
+        <VersionSuffix>ci</VersionSuffix>
+      </PropertyGroup>
+    </When>
+  </Choose>
+</Project>
