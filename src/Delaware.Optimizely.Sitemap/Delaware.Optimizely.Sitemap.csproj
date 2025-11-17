@@ -42,7 +42,7 @@
   </PropertyGroup>
   <Target Name="IncludeProjectReferences">
     <ItemGroup>
-      <BuildOutputInPackage Include="$(OutputPath)Delaware.Optimizely.Sitemap*.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Delaware.Optimizely.Sitemap.*.dll" />
     </ItemGroup>
   </Target>
 </Project>
