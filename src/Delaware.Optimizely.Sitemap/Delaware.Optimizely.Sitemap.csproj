@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
 
     <!-- Project specific package properties -->
-    <PackageId>Dlw.Optimizely.Sitemap</PackageId>
-    <Title>Dlw.Optimizely.Sitemap</Title>
+    <PackageId>Delaware.Optimizely.Sitemap</PackageId>
+    <Title>Delaware.Optimizely.Sitemap</Title>
     <PackageReadmeFile>/docs/README.md</PackageReadmeFile>
     <PackageIcon>images/delaware-dee-rgb.jpg</PackageIcon>
   </PropertyGroup>
