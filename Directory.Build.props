@@ -13,5 +13,5 @@
     <Owners>delaware</Owners>
   </PropertyGroup>
 
-  <Import Project=".build/Nuget.props" />
+  <Import Project=".build/Nugets.props" />
 </Project>
