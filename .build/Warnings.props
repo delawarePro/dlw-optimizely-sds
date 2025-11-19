@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+
+    <!-- Make sure warnings are followed up. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Ignore compiler warnings about missing XML comments. -->
+    <NoWarn>$(NoWarn);CS1570;CS1571;CS1572;CS1573;CS1574;CS1587;CS1591</NoWarn>
+  
+  </PropertyGroup>
+
+</Project>

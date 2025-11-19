@@ -4,11 +4,45 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- Project specific package properties -->
+    <PackageId>Delaware.Optimizely.Sitemap</PackageId>
+    <Title>Delaware.Optimizely.Sitemap</Title>
+    <PackageReadmeFile>/docs/README.md</PackageReadmeFile>
+    <PackageIcon>images/delaware-dee-rgb.jpg</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Delaware.Optimizely.Sitemap.Core\Delaware.Optimizely.Sitemap.Core.csproj" />
-    <ProjectReference Include="..\Delaware.Optimizely.Sitemap.Shared\Delaware.Optimizely.Sitemap.Shared.csproj" />
+    <ProjectReference Include="..\Delaware.Optimizely.Sitemap.Core\Delaware.Optimizely.Sitemap.Core.csproj">
+      <!-- Don't expose project references as nuget dependencies. -->
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\Delaware.Optimizely.Sitemap.Shared\Delaware.Optimizely.Sitemap.Shared.csproj">
+      <!-- Don't expose project references as nuget dependencies. -->
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
   </ItemGroup>
 
+  <!-- Explicitly include 'EPiServer.CMS.UI.Core' package as nuget dependency.
+      This seems to also influence the behaviour of Optimizely's job type scanning.
+  -->
+  <ItemGroup>
+    <PackageReference Include="EPiServer.CMS.UI.Core" />
+  </ItemGroup>
+
+  <!-- Include some assets to pack together.-->
+  <ItemGroup>
+    <None Include="../../docs/README.md" Pack="true" PackagePath="docs\" />
+    <None Include="../../images/delaware-dee-rgb.jpg" Pack="true" PackagePath="images\" />
+  </ItemGroup>
+
+  <!-- Include project references together with package. -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeProjectReferences</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+  <Target Name="IncludeProjectReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(OutputPath)Delaware.Optimizely.Sitemap.*.dll" />
+    </ItemGroup>
+  </Target>
 </Project>

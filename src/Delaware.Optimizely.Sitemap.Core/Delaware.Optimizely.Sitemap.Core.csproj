@@ -4,17 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Description>The Embedded Sitemap Discovery Service  is a tool designed to create sitemaps for any Optimizely project. It helps improve SEO by generating XML sitemaps that search engines can use to index your site(s) more effectively. See README.md for usage and configuration options.</Description>
+
+    <!-- Not our main package to publish (yet?) -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="IntegrationTests" />
-  </ItemGroup>
-
-  <!-- Reference the README.md file explicitly. -->
-  <ItemGroup>
+    <!-- todo: why abstraction & viewfeatures needed? -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Abstractions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.ViewFeatures" />
+    <!-- todo: add config & logging as explicit dependency in public package?-->
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>

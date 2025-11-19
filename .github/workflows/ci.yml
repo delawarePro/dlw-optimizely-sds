@@ -1,0 +1,45 @@
+name: Dlw.Optimizely.SDS.CI
+
+on:
+    pull_request:
+        types:
+            - opened
+        branches:
+            - "main"
+            - "master"
+            - "releases/**"
+            - "prereleases/**"
+
+    workflow_dispatch:
+        inputs:
+            noTests:
+                description: "Skip tests."
+                type: boolean
+                default: false
+            prerelease:
+                description: "Pre-release to trigger preparing packages."
+                type: string
+                default: "none"
+
+jobs:
+    build:
+        name: "Build and Publish"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: delawarePro/platina-scripts/github/actions/ci.branch.conventions@refs/tags/2.6.0
+              id: "conventions"
+              with:
+                  noTests: ${{ inputs.noTests }}
+                  prerelease: "test-github" # remove when OK.
+                  #prerelease: ${{ inputs.prerelease }} 
+
+            - uses: delawarePro/platina-scripts/github/actions/dotnet-ci@refs/tags/2.6.0
+              with:
+                  noTests: ${{ steps.conventions.outputs.noTests }}
+                  prerelease: ${{ steps.conventions.outputs.prerelease }}
+                  withPack: "true"
+                  withRelease: ${{ steps.conventions.outputs.withRelease }}
+                  nuGetSourceUrl: ${{ vars.PLATINA_NUGET_FEED_URL }}
+                  nuGetAuthToken: ${{ secrets.PLATINA_FEED_TOKEN }}
