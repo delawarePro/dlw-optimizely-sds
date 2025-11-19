@@ -32,17 +32,15 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v5
-            
-            # Use 'master' branch for now. There is no release yet.
-            - uses: chanw/platina-scripts/github/actions/ci.branch.conventions@feature/dotnet-10
+
+            - uses: delawarePro/platina-scripts/github/actions/ci.branch.conventions@refs/tags/2.6.0
               id: "conventions"
               with:
                   noTests: ${{ inputs.noTests }}
                   prerelease: "test-github" # remove when OK.
                   #prerelease: ${{ inputs.prerelease }} 
 
-            # Use 'master' branch for now. There is no release yet.
-            - uses: chanw/platina-scripts/github/actions/dotnet-ci@feature/dotnet-10
+            - uses: delawarePro/platina-scripts/github/actions/dotnet-ci@refs/tags/2.6.0
               with:
                   noTests: ${{ steps.conventions.outputs.noTests }}
                   prerelease: ${{ steps.conventions.outputs.prerelease }}
