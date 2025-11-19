@@ -10,11 +10,6 @@ on:
             - "releases/**"
             - "prereleases/**"
 
-    # temporary: to be removed:
-    push:
-        branches:
-            - "feature/platina-feed"
-
     workflow_dispatch:
         inputs:
             noTests:
