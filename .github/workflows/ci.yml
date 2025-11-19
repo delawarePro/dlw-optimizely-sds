@@ -32,8 +32,7 @@ jobs:
               id: "conventions"
               with:
                   noTests: ${{ inputs.noTests }}
-                  prerelease: "test-github" # remove when OK.
-                  #prerelease: ${{ inputs.prerelease }} 
+                  prerelease: ${{ inputs.prerelease }} 
 
             - uses: delawarePro/platina-scripts/github/actions/dotnet-ci@refs/tags/2.6.0
               with:
