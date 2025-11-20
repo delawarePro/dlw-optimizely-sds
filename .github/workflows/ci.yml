@@ -1,15 +1,24 @@
 name: Dlw.Optimizely.SDS.CI
 
 on:
+    # Run CI on each PR.
+    # Default types are 'opened', 'synchronize', and 'reopened'.
     pull_request:
-        types:
-            - opened
         branches:
             - "main"
             - "master"
             - "releases/**"
             - "prereleases/**"
 
+    # Run whenever we push to main, master or release branch.
+    push:
+        branches:
+            - "main"
+            - "master"
+            - "releases/**"
+            - "prereleases/**"
+
+    # Allow manual triggering of the workflow with parameters.
     workflow_dispatch:
         inputs:
             noTests:
@@ -20,6 +29,8 @@ on:
                 description: "Pre-release to trigger preparing packages."
                 type: string
                 default: "none"
+
+    merge_group:
 
 jobs:
     build:
@@ -32,8 +43,7 @@ jobs:
               id: "conventions"
               with:
                   noTests: ${{ inputs.noTests }}
-                  prerelease: "test-github" # remove when OK.
-                  #prerelease: ${{ inputs.prerelease }} 
+                  prerelease: ${{ inputs.prerelease }} 
 
             - uses: delawarePro/platina-scripts/github/actions/dotnet-ci@refs/tags/2.6.0
               with:
