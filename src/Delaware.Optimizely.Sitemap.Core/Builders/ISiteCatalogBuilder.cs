@@ -68,4 +68,6 @@ public interface ISiteCatalogBuilder
     /// Registers a custom <see cref="ISiteCatalogPageProvider"/> implementation instead of the default <see cref="DefaultSiteCatalogPageProvider"/>.
     /// </summary>
     ISiteCatalogBuilder WithPageProvider(ISiteCatalogPageProvider pageProvider);
+
+    ISiteCatalogBuilder WithLanguageGroup(IReadOnlyCollection<string> languages, string name);
 }

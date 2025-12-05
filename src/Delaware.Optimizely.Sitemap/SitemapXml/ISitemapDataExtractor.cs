@@ -4,5 +4,5 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml;
 
 public interface ISitemapDataExtractor
 {
-    Task<IReadOnlyList<SiteResourceUrls>> Extract(IReadOnlyCollection<ISiteResource> resources);
+    Task<IReadOnlyList<SiteResourceUrls>> Extract(SourceSet sourceSet);
 }

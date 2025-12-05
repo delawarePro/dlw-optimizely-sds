@@ -26,17 +26,19 @@ public class DefaultSitemapXmlStorageProvider(
     : ISitemapXmlStorageProvider
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger<DefaultSitemapXmlStorageProvider>();
-
-    private ContentReference? _sitemapRootForSite;
     private ContentType? _sitemapMediaContentType;
 
-    public string Store(SiteDefinition siteDefinition, Stream inputStream, int pageNumber, bool isDelta)
+    public string Store(
+        SiteDefinition siteDefinition,
+        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+        Stream inputStream, 
+        int pageNumber,
+        bool isDelta)
     {
-        EnsureInitialized(siteDefinition);
+        EnsureInitialized(siteDefinition, languageGroup, out var target);
 
         var urlSegment = $"{(isDelta ? "D" : string.Empty)}{pageNumber}";
-        var existing = contentRepository.GetBySegment(_sitemapRootForSite, urlSegment,
-            LanguageSelector.MasterLanguage());
+        var existing = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage());
 
         if (existing != null)
         {
@@ -50,7 +52,7 @@ public class DefaultSitemapXmlStorageProvider(
             }
         }
 
-        var file = contentRepository.GetDefault<MediaData>(_sitemapRootForSite, _sitemapMediaContentType!.ID);
+        var file = contentRepository.GetDefault<MediaData>(target, _sitemapMediaContentType!.ID);
         file.Name = urlSegment;
 
         var blob = blobFactory.CreateBlob(file.BinaryDataContainer, Constants.SdsSitemapFileExtension);
@@ -68,31 +70,17 @@ public class DefaultSitemapXmlStorageProvider(
             .GetUrl(file.ContentLink, null, urlResolverArgs);
     }
 
-    public void Clean(SiteDefinition siteDefinition, SitemapState forState)
-    {
-        EnsureInitialized(siteDefinition);
-
-        var alLFilesForSite = contentRepository
-            .GetChildren<MediaData>(_sitemapRootForSite)
-            .ToList();
-
-        foreach (var mediaData in alLFilesForSite)
-        {
-            if (!int.TryParse(mediaData.RouteSegment, out var i) || !forState.FullPages.ContainsKey(i))
-            {
-                // Blob is unknown to sitemap state.
-                contentRepository.Delete(mediaData.ContentLink, false, AccessLevel.NoAccess);
-            }
-        }
-    }
-
-    private void EnsureInitialized(SiteDefinition siteDefinition)
+    private void EnsureInitialized(
+        SiteDefinition siteDefinition,
+        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+        out ContentReference mostSpecificFolder)
     {
         var loaderOptions = LanguageSelector.MasterLanguage();
+        ContentReference? languageGroupFolderContentReference = null;
 
         // Ensure sitemap root folder.
         var sitemapRoot = contentRepository.GetBySegment(siteDefinition.GlobalAssetsRoot, "sitemaps", loaderOptions) as ContentFolder;
-
+        ContentReference? sitemapRootForSite = null;
         if (sitemapRoot == null)
         {
             sitemapRoot = contentRepository.GetDefault<ContentFolder>(siteDefinition.GlobalAssetsRoot);
@@ -109,12 +97,35 @@ public class DefaultSitemapXmlStorageProvider(
             sitemapFolderForSite = contentRepository.GetDefault<ContentFolder>(sitemapRoot.ContentLink);
             sitemapFolderForSite.Name = siteDefinition.Name;
 
-            _sitemapRootForSite = contentRepository.Save(sitemapFolderForSite, SaveAction.Publish, AccessLevel.NoAccess);
+            sitemapRootForSite = contentRepository.Save(sitemapFolderForSite, SaveAction.Publish, AccessLevel.NoAccess);
         }
         else
         {
-            _sitemapRootForSite = sitemapFolderForSite.ContentLink;
+            sitemapRootForSite = sitemapFolderForSite.ContentLink;
         }
+
+        if (!string.IsNullOrWhiteSpace(languageGroup.Key))
+        {
+            var languageGroupName = languageGroup.Key;
+
+            // Ensure folder for this site's sitemap files.
+            var sitemapFolderForLanguageGroup = contentRepository.GetBySegment(sitemapRootForSite, languageGroupName, loaderOptions) as ContentFolder;
+
+            if (sitemapFolderForLanguageGroup == null)
+            {
+                sitemapFolderForLanguageGroup = contentRepository.GetDefault<ContentFolder>(sitemapFolderForSite.ContentLink);
+                sitemapFolderForLanguageGroup.Name = languageGroupName;
+
+                languageGroupFolderContentReference = contentRepository.Save(sitemapFolderForLanguageGroup, SaveAction.Publish, AccessLevel.NoAccess);
+            }
+            else
+            {
+                languageGroupFolderContentReference = sitemapFolderForLanguageGroup.ContentLink;
+            }
+        }
+
+        // Set the most specific folder for the given site/language group to store sitemap files in.
+        mostSpecificFolder = languageGroupFolderContentReference ?? sitemapRootForSite ?? sitemapRoot.ContentLink;
 
         _sitemapMediaContentType = contentTypeRepository.Load(typeof(SitemapFile));
     }

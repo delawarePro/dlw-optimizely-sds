@@ -1,4 +1,5 @@
-﻿using Delaware.Optimizely.Sitemap.Core;
+﻿using System.Globalization;
+using Delaware.Optimizely.Sitemap.Core;
 using Delaware.Optimizely.Sitemap.Shared;
 using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
@@ -22,10 +23,12 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
         Configurations = configurations;
     }
 
-    public virtual async Task<IReadOnlyList<SiteResourceUrls>> Extract(IReadOnlyCollection<ISiteResource> resources)
+    public virtual async Task<IReadOnlyList<SiteResourceUrls>> Extract(SourceSet sourceSet)
     {
-        if (resources is null)
-            throw new ArgumentNullException(nameof(resources));
+        if (sourceSet is null)
+            throw new ArgumentNullException(nameof(sourceSet));
+
+        var resources = sourceSet.Resources;
 
         var results = new List<SiteResourceUrls>();
         foreach (var resource in resources)
@@ -33,14 +36,18 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
             var config = Configurations.FirstOrDefault(x => x.Matches(resource));
             if (config == null) continue;
 
-            var urls = await Extract(resource, config);
+            var urls = await Extract(resource, config, sourceSet.LanguageGroup);
             if (urls != null) results.Add(urls);
         }
 
         return results;
     }
 
-    protected virtual async Task<SiteResourceUrls?> Extract(ISiteResource resource, SitemapDataExtractorConfig config)
+    protected virtual async Task<SiteResourceUrls?> Extract(
+        ISiteResource resource, 
+        SitemapDataExtractorConfig config,
+        KeyValuePair<string, 
+            IReadOnlyCollection<string>> sourceSetLanguageGroup)
     {
         var urls = new List<Url>();
 
@@ -53,7 +60,10 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
 
         await foreach (var multiplication in config.Multiplier.Multiply(resource))
         {
-            // Allow multiplier to configure the default language.
+            // Default language is the first of the languages specified in the group - if any.
+            defaultLanguage ??= sourceSetLanguageGroup.Value?.FirstOrDefault();
+
+            // Still no default language? Allow multiplier to configure the default language.
             defaultLanguage ??= multiplication.Variables.GetValueOrDefault(SharedSitemapConstants.DefaultLanguageVariable, null) as string;
 
             var withFallbackEnabledDefaultLanguage = WithFallbackLanguages(resource, defaultLanguage);
@@ -61,7 +71,7 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
 
             foreach (var possibleDefaultLanguage in withFallbackEnabledDefaultLanguage.Distinct())
             {
-                location = GenerateLocation(resource, config, multiplication.Variables, possibleDefaultLanguage);
+                location = GenerateLocation(resource, config, multiplication.Variables, possibleDefaultLanguage, true);
 
                 if (location != null) break;
             }
@@ -149,7 +159,8 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
         ISiteResource resource,
         SitemapDataExtractorConfig config,
         IDictionary<string, object?> variables,
-        string? language)
+        string? language = null,
+        bool fallbackToNeutral = false)
     {
         if (resource is DefaultSiteResource optimizelySiteResource)
         {
@@ -163,7 +174,15 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
                 language = optimizelySiteResource.Localized.Keys.First();
             }
 
-            if (optimizelySiteResource.Localized.TryGetValue(language, out var value))
+            var asCultureInfo = CultureInfo.GetCultureInfo(language);
+
+            if (optimizelySiteResource.Localized.TryGetValue(asCultureInfo.Name, out var value))
+            {
+                return value.Url;
+            }
+
+            // Fallback to neutral culture.
+            if (fallbackToNeutral && !asCultureInfo.IsNeutralCulture && optimizelySiteResource.Localized.TryGetValue(asCultureInfo.Parent.Name, out value))
             {
                 return value.Url;
             }

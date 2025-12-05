@@ -1,7 +1,10 @@
-﻿using System.IO.Compression;
+﻿using System.Globalization;
+using System.IO.Compression;
 using Delaware.Optimizely.Sitemap.Client;
+using Delaware.Optimizely.Sitemap.Core.Builders;
 using Delaware.Optimizely.Sitemap.Core.Extensions;
 using Delaware.Optimizely.Sitemap.Shared.Models;
+using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using Delaware.Optimizely.Sitemap.SitemapXml.Models;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using EPiServer;
@@ -10,6 +13,7 @@ using EPiServer.Framework.Blobs;
 using EPiServer.Web;
 using EPiServer.Web.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Delaware.Optimizely.Sitemap.Middleware;
@@ -17,6 +21,7 @@ namespace Delaware.Optimizely.Sitemap.Middleware;
 public class EmbeddedSitemapMiddleware(
     RequestDelegate next,
     ISitemapXmlWriter sitemapXmlWriter,
+    SiteCatalogDirectory siteCatalogDirectory,
     IEmbeddedSiteCatalogClient embeddedSiteCatalogClient,
     IUrlResolver urlResolver,
     IOptions<EmbeddedSitemapOptions> options)
@@ -45,7 +50,9 @@ public class EmbeddedSitemapMiddleware(
             if (TryParseSitemapPageNumber(context.Request.Path, out var sitemapPageIndex, out var isDelta)
                 && isDelta != null && sitemapPageIndex != null)
             {
-                if (TryGetPageLocation(state, isDelta.Value, sitemapPageIndex.Value, out var location)
+                var languageGroupKey = DetermineLanguageGroupKey(context);
+
+                if (TryGetPageLocation(state, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
                     && location != null
                     && TryGetMediaByUrl(location, out var blob)
                     && blob != null)
@@ -53,7 +60,7 @@ public class EmbeddedSitemapMiddleware(
                     await using var stream = blob.OpenRead();
                     await using var gzipStream = new GZipStream(context.Response.Body, CompressionMode.Compress);
 
-                    context.Response.ContentType = "application/xml"; 
+                    context.Response.ContentType = "application/xml";
                     context.Response.Headers["Content-Encoding"] = "gzip";
 
                     await stream.CopyToAsync(gzipStream);
@@ -90,13 +97,19 @@ public class EmbeddedSitemapMiddleware(
         return false;
     }
 
-    private static bool TryGetPageLocation(SitemapState state, bool isDelta, int sitemapPageIndex, out string? location)
+    private static bool TryGetPageLocation(
+        SitemapState state,
+        string languageGroupKey,
+        bool isDelta,
+        int sitemapPageIndex,
+        out string? location)
     {
         location = null;
 
         if (isDelta)
         {
-            if (state.DeltaPages.TryGetValue(sitemapPageIndex, out var delta))
+            if (state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var deltaPages)
+                && deltaPages.TryGetValue(sitemapPageIndex, out var delta))
             {
                 location = delta;
                 return true;
@@ -105,7 +118,8 @@ public class EmbeddedSitemapMiddleware(
             return false;
         }
 
-        if (state.FullPages.TryGetValue(sitemapPageIndex, out var page))
+        if (state.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages)
+            && fullPages.TryGetValue(sitemapPageIndex, out var page))
         {
             location = page;
 
@@ -159,7 +173,9 @@ public class EmbeddedSitemapMiddleware(
             return false;
         }
 
-        var sitemapUrls = GenerateSitemapUrls(SiteDefinition.Current.SiteUrl, state);
+        var languageGroupKey = DetermineLanguageGroupKey(context);
+
+        var sitemapUrls = GenerateSitemapUrls(SiteDefinition.Current.SiteUrl, languageGroupKey, state);
         var index = new SitemapIndex(sitemapUrls.ToList());
 
         using var memory = new MemoryStream();
@@ -181,6 +197,13 @@ public class EmbeddedSitemapMiddleware(
         return true;
     }
 
+    private static CultureInfo DetermineCurrentCultureInfo(HttpContext fromHttpContext)
+    {
+        var contentLanguageAccessor = fromHttpContext.RequestServices.GetService<IContentLanguageAccessor>();
+
+        return contentLanguageAccessor!.Language;
+    }
+
     private static void EnsureNoCaching(HttpContext httpContext)
     {
         httpContext.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
@@ -188,25 +211,51 @@ public class EmbeddedSitemapMiddleware(
         httpContext.Response.Headers["Expires"] = "0";
     }
 
-    private static IEnumerable<SitemapUrl> GenerateSitemapUrls(Uri baseUrl, SitemapState? state)
+    private string DetermineLanguageGroupKey(HttpContext httpContext)
     {
-        if (state == null || state.FullPages.Count <= 0)
+        var currentCi = DetermineCurrentCultureInfo(httpContext);
+
+        if (siteCatalogDirectory.TryGetSiteCatalog(SiteDefinition.Current.Name, out var siteCatalog) && siteCatalog != null)
+        {
+            var matchingLanguageGroup =
+                siteCatalog
+                    .LanguageGroups
+                    .EmptyWhenNull()
+                    .FirstOrDefault(lg => lg.Value.Contains(currentCi.Name, StringComparer.InvariantCultureIgnoreCase));
+
+            return matchingLanguageGroup.Key;
+        }
+
+        return DefaultSiteCatalogBuilder.DefaultLanguageGroupName; // TODO shared constant?
+    }
+
+    private static IEnumerable<SitemapUrl> GenerateSitemapUrls(
+        Uri baseUrl,
+        string languageGroupKey,
+        SitemapState? state)
+    {
+        if (state == null || !state.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages))
         {
             yield break;
+        }
+
+        if (!state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var deltaPages))
+        {
+            deltaPages = new Dictionary<int, string>();
         }
 
         var cleanBaseUrl = baseUrl.ToString().EnsureEndsWithSuffix("/");
 
         var i = 0;
 
-        foreach (var page in state.FullPages.Values)
+        foreach (var unused in fullPages.Values)
         {
             yield return new SitemapUrl($"{cleanBaseUrl}sitemap/{i++}.xml");
         }
 
         i = 0;
 
-        foreach (var deltaPageUrl in state.DeltaPages.Values)
+        foreach (var unused in deltaPages.Values)
         {
             yield return new SitemapUrl($"{cleanBaseUrl}sitemap/d{i++}.xml");
         }

@@ -15,9 +15,11 @@ public class DynamicContentSitemapExtractor(IList<IDynamicContentRootProcessor> 
 
     #region ISitemapDataExtractor
 
-    public async Task<IReadOnlyList<SiteResourceUrls>> Extract(IReadOnlyCollection<ISiteResource> resources)
+    public async Task<IReadOnlyList<SiteResourceUrls>> Extract(SourceSet sourceSet)
     {
-        if (resources is null) throw new ArgumentNullException(nameof(resources));
+        if (sourceSet == null) throw new ArgumentNullException(nameof(sourceSet));
+        
+        var resources = sourceSet.Resources;
 
         var results = new List<SiteResourceUrls>();
 

@@ -20,6 +20,9 @@ public class SiteCatalog(
 
     public SiteDefinition SiteDefinition { get; } = siteDefinition;
 
+    public IDictionary<string, IReadOnlyCollection<string>> LanguageGroups { get; set; } =
+        new Dictionary<string, IReadOnlyCollection<string>>();
+
     public virtual async Task<SiteCatalogEntriesResult> GetPageEntries(
         IOperationContext context,
         ContentReference rootPage,

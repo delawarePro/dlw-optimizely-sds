@@ -26,20 +26,32 @@ internal class DefaultSitemapGeneratorService(
         IReadOnlyCollection<SiteCatalogEntry> updates)
     {
         var state = embeddedSiteCatalogClient.GetState(siteCatalog.SiteId);
-        var storedPageCount = new StoredPageCount(state.DeltaPages.Count);
 
         if (updates is { Count: > 0 })
         {
             using (new SiteContextSwitcher(siteCatalog.SiteDefinition))
             {
-                var currentDelta = state.DeltaPages.Count;
 
-                var sitemapXmlPageUrls =
-                    await DoGenerateAndPersistAsync(siteCatalog, updates, storedPageCount, true) ?? [];
-
-                foreach (var sitemapXmlPageUrl in sitemapXmlPageUrls)
+                foreach (var languageGroup in siteCatalog.LanguageGroups)
                 {
-                    state.DeltaPages[currentDelta++] = sitemapXmlPageUrl;
+                    var storedPageCount = state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroup.Key, out var deltaPagesCurrentLanguageGroup)
+                        ? new StoredPageCount(deltaPagesCurrentLanguageGroup.Count)
+                        : new StoredPageCount(0);
+
+                    var currentDelta = storedPageCount.Value;
+
+                    var sitemapXmlPageUrls =
+                        await DoGenerateAndPersistAsync(siteCatalog, languageGroup, updates, storedPageCount, true) ?? [];
+
+                    foreach (var sitemapXmlPageUrl in sitemapXmlPageUrls)
+                    {
+                        if (!state.DeltaPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
+                        {
+                            state.DeltaPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
+                        }
+
+                        state.DeltaPagesPerLanguageGroup[languageGroup.Key][currentDelta++] = sitemapXmlPageUrl;
+                    }
                 }
             }
         }
@@ -56,35 +68,46 @@ internal class DefaultSitemapGeneratorService(
         {
             var siteName = siteCatalog.SiteId;
             var entryCountForSite = embeddedSiteCatalogClient.GetCatalogEntryCount(siteName);
-            var processedCount = 0;
-            var currentEntryBatch = 0;
-            var sitemapPageCount = 0;
+           
             var state = embeddedSiteCatalogClient.GetState(siteName);
 
-            state.FullPages = new Dictionary<int, string>();
-            var storedPageCount = new StoredPageCount(0);
+            state.FullPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>();
 
-            while (processedCount < entryCountForSite)
+            foreach (var languageGroup in siteCatalog.LanguageGroups)    
             {
-                var entries = embeddedSiteCatalogClient.GetCatalog(siteName, currentEntryBatch, options.Value.UrlCountPerSitemapPage);
+                var storedPageCount = new StoredPageCount(0);
 
-                if (entries is not { Count: > 0 }) break;
+                var processedCount = 0;
+                var currentEntryBatch = 0;
+                var sitemapPageCount = 0;
 
-                var sitemapXmlPageUrls = 
-                    await DoGenerateAndPersistAsync(siteCatalog, entries, storedPageCount, false) ?? [];
-
-                foreach (var sitemapXmlPageUrl in sitemapXmlPageUrls)
+                while (processedCount < entryCountForSite)
                 {
-                    state.FullPages[sitemapPageCount++] = sitemapXmlPageUrl;
-                }
+                    var entries = embeddedSiteCatalogClient.GetCatalog(siteName, currentEntryBatch, options.Value.UrlCountPerSitemapPage);
 
-                processedCount += entries.Count;
-                currentEntryBatch = ++currentEntryBatch;
+                    if (entries is not { Count: > 0 }) break;
+
+                    var sitemapPageUrlsPerLanguageGroup =
+                        await DoGenerateAndPersistAsync(siteCatalog, languageGroup, entries, storedPageCount, false) ?? [];
+
+                    foreach (var sitemapXmlPageUrl in sitemapPageUrlsPerLanguageGroup)
+                    {
+                        if (!state.FullPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
+                        {
+                            state.FullPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
+                        }
+
+                        state.FullPagesPerLanguageGroup[languageGroup.Key][sitemapPageCount++] = sitemapXmlPageUrl;
+                    }
+
+                    processedCount += entries.Count;
+                    currentEntryBatch = ++currentEntryBatch;
+                }
             }
 
             state.LastDeltaGenerationUtc = null;
             state.LastFullGenerationUtc = DateTime.UtcNow;
-            state.DeltaPages = new Dictionary<int, string>(0);
+            state.DeltaPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>(0);
 
             // TODO clean in a new way? siteCatalog.SitemapXmlStorageProvider.Clean(state);
 
@@ -94,8 +117,8 @@ internal class DefaultSitemapGeneratorService(
         }
     }
 
-    private async Task<ICollection<string>?> DoGenerateAndPersistAsync(
-        ISiteCatalog catalog,
+    private async Task<IReadOnlyCollection<string>?> DoGenerateAndPersistAsync(ISiteCatalog catalog,
+        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
         IReadOnlyCollection<SiteCatalogEntry> entries,
         StoredPageCount storedPageCount,
         bool isDelta)
@@ -110,7 +133,7 @@ internal class DefaultSitemapGeneratorService(
                 .Select(x => new DefaultSiteResource(x))
                 .ToArray();
 
-        var sourceSet = new SourceSet(mapped, new Source(catalog.SiteId));
+        var sourceSet = new SourceSet(mapped, new Source(catalog.SiteId), languageGroup);
 
         var resourceUrls = new List<SiteResourceUrls>();
 
@@ -147,7 +170,7 @@ internal class DefaultSitemapGeneratorService(
             // Reset the stream position.
             memory.Seek(0, SeekOrigin.Begin);
 
-            storedLocations.Add(sitemapXmlStorageProvider.Store(catalog.SiteDefinition, memory, storedPageCount.Value++, isDelta));
+            storedLocations.Add(sitemapXmlStorageProvider.Store(catalog.SiteDefinition, languageGroup, memory, storedPageCount.Value++, isDelta));
 
             storedCount += batch.Count();
         }

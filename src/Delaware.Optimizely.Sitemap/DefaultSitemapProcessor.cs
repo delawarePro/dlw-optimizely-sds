@@ -47,7 +47,7 @@ public class DefaultSitemapProcessor : ISiteResourceProcessor
 
         foreach (var sitemapDataExtractor in Extractors)
         {
-            var urls = await sitemapDataExtractor.Extract(sourceSet.Resources);
+            var urls = await sitemapDataExtractor.Extract(sourceSet);
 
             foreach (var url in urls)
             {
