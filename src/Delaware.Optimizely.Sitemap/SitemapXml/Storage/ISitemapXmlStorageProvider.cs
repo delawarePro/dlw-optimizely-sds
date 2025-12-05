@@ -5,6 +5,6 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 
 public interface ISitemapXmlStorageProvider
 {
-    public string Store(SiteDefinition siteDefinition, KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+    public string Store(SiteDefinition siteDefinition, SitemapLanguageGroup languageGroup,
         Stream inputStream, int pageNumber, bool isDelta);
 }

@@ -68,7 +68,7 @@ public static class BuilderExtensions
     /// </summary>
     /// <param name="serviceProvider"></param>
     /// <param name="siteDefinition">The site to add a catalog for.</param>
-    /// <param name="languages">The languages the sitemap will have to be published in for this site.</param>
+    /// <param name="languages">*All* languages the sitemap will have to be published in for this site.</param>
     /// <param name="configure"></param>
     public static IServiceProvider AddSitemapCatalog(
         this IServiceProvider serviceProvider,
@@ -78,7 +78,7 @@ public static class BuilderExtensions
     {
         var siteCatalogDirectory = serviceProvider.GetRequiredService<SiteCatalogDirectory>();
 
-        siteCatalogDirectory.AddSiteCatalog(siteDefinition, configure);
+        siteCatalogDirectory.AddSiteCatalog(siteDefinition, configure, languages);
 
         return serviceProvider;
     }

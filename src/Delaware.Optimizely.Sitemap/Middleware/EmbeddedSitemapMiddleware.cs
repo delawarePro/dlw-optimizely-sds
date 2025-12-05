@@ -211,7 +211,7 @@ public class EmbeddedSitemapMiddleware(
         httpContext.Response.Headers["Expires"] = "0";
     }
 
-    private string DetermineLanguageGroupKey(HttpContext httpContext)
+    private SitemapLanguageGroupKey DetermineLanguageGroupKey(HttpContext httpContext)
     {
         var currentCi = DetermineCurrentCultureInfo(httpContext);
 
@@ -221,9 +221,12 @@ public class EmbeddedSitemapMiddleware(
                 siteCatalog
                     .LanguageGroups
                     .EmptyWhenNull()
-                    .FirstOrDefault(lg => lg.Value.Contains(currentCi.Name, StringComparer.InvariantCultureIgnoreCase));
+                    .FirstOrDefault(lg => lg.Languages.Contains(currentCi.Name, StringComparer.InvariantCultureIgnoreCase));
 
-            return matchingLanguageGroup.Key;
+            if (matchingLanguageGroup != null)
+            {
+                return matchingLanguageGroup.Key;
+            }
         }
 
         return DefaultSiteCatalogBuilder.DefaultLanguageGroupName; // TODO shared constant?
@@ -231,7 +234,7 @@ public class EmbeddedSitemapMiddleware(
 
     private static IEnumerable<SitemapUrl> GenerateSitemapUrls(
         Uri baseUrl,
-        string languageGroupKey,
+        SitemapLanguageGroupKey languageGroupKey,
         SitemapState? state)
     {
         if (state == null || !state.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages))

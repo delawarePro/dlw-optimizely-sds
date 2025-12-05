@@ -30,7 +30,7 @@ public class DefaultSitemapXmlStorageProvider(
 
     public string Store(
         SiteDefinition siteDefinition,
-        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+        SitemapLanguageGroup languageGroup,
         Stream inputStream, 
         int pageNumber,
         bool isDelta)
@@ -72,7 +72,7 @@ public class DefaultSitemapXmlStorageProvider(
 
     private void EnsureInitialized(
         SiteDefinition siteDefinition,
-        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+        SitemapLanguageGroup languageGroup,
         out ContentReference mostSpecificFolder)
     {
         var loaderOptions = LanguageSelector.MasterLanguage();

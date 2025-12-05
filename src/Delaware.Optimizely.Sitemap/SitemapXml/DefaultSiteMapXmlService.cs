@@ -117,8 +117,9 @@ internal class DefaultSitemapGeneratorService(
         }
     }
 
-    private async Task<IReadOnlyCollection<string>?> DoGenerateAndPersistAsync(ISiteCatalog catalog,
-        KeyValuePair<string, IReadOnlyCollection<string>> languageGroup,
+    private async Task<IReadOnlyCollection<string>?> DoGenerateAndPersistAsync(
+        ISiteCatalog catalog,
+        SitemapLanguageGroup languageGroup,
         IReadOnlyCollection<SiteCatalogEntry> entries,
         StoredPageCount storedPageCount,
         bool isDelta)

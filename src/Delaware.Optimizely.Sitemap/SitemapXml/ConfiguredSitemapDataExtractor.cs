@@ -46,8 +46,7 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
     protected virtual async Task<SiteResourceUrls?> Extract(
         ISiteResource resource, 
         SitemapDataExtractorConfig config,
-        KeyValuePair<string, 
-            IReadOnlyCollection<string>> sourceSetLanguageGroup)
+        SitemapLanguageGroup sourceSetLanguageGroup)
     {
         var urls = new List<Url>();
 
@@ -61,7 +60,7 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
         await foreach (var multiplication in config.Multiplier.Multiply(resource))
         {
             // Default language is the first of the languages specified in the group - if any.
-            defaultLanguage ??= sourceSetLanguageGroup.Value?.FirstOrDefault();
+            defaultLanguage ??= sourceSetLanguageGroup.Languages.FirstOrDefault();
 
             // Still no default language? Allow multiplier to configure the default language.
             defaultLanguage ??= multiplication.Variables.GetValueOrDefault(SharedSitemapConstants.DefaultLanguageVariable, null) as string;

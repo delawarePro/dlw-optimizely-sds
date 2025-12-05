@@ -69,5 +69,15 @@ public interface ISiteCatalogBuilder
     /// </summary>
     ISiteCatalogBuilder WithPageProvider(ISiteCatalogPageProvider pageProvider);
 
+    /// <summary>
+    /// Create split sitemaps by creating <see cref="SitemapLanguageGroup"/> objects with this method.
+    /// </summary>
+    /// <remarks>
+    /// Use this approach to have split sitemaps when having multiple hostnames/languages for a single site.
+    /// When no languages are specified, a 'default' group will be created for the <see cref="ISiteCatalog"/> using the languages specified when adding the sitemap catalog.
+    /// </remarks>
+    /// <param name="languages">The languages to group.</param>
+    /// <param name="name">Unique name for this group.</param>
+    /// <returns></returns>
     ISiteCatalogBuilder WithLanguageGroup(IReadOnlyCollection<string> languages, string name);
 }
