@@ -6,6 +6,7 @@ using Delaware.Optimizely.Sitemap.Shared.Models;
 using EPiServer;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
+using EPiServer.Data.Entity;
 using EPiServer.Web;
 using EPiServer.Web.Mvc.Html.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -185,6 +186,12 @@ public class DefaultSiteCatalogBuilder(
         var pageProvider = PageProvider ?? throw new NullReferenceException($"No page provider registered for '{siteDefinition.Name}' site catalog.");
         var defaultMapper = DefaultEntryMapper ?? throw new NullReferenceException($"No default mapping provided for '{siteDefinition.Name}' site catalog.");
 
+        if (languages == null || !languages.Any())
+        {
+            throw new ArgumentException($"Specify one or more languages for site catalog {siteDefinition.Name}.");
+        }
+
+        var lg = DetermineLanguageGroups(languages, _languageGroups);
         // If there are language groups configured, use those.
         // Otherwise, create a 'Default' language group containing all languages for site.
         var languageGroups = _languageGroups.Any()
@@ -198,5 +205,77 @@ public class DefaultSiteCatalogBuilder(
         {
             LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups
         };
+    }
+
+    private static IList<SitemapLanguageGroup> DetermineLanguageGroups(string[] languages,
+        IList<SitemapLanguageGroup> languageGroups)
+    {
+        if (!languageGroups.Any())
+        {
+            return new List<SitemapLanguageGroup> { new(DefaultLanguageGroupName, languages) };
+        }
+
+        var siteLanguages = new HashSet<string>(languages, StringComparer.InvariantCultureIgnoreCase);
+
+        // Check if the language groups match the specified *all* languages.
+        foreach (var sitemapLanguageGroup in languageGroups)
+        {
+            var unknownLanguages = sitemapLanguageGroup.Languages
+                .Where(lang => !siteLanguages.Contains(lang))
+                .ToArray();
+
+            if (unknownLanguages.Length > 0)
+            {
+                var groupName = sitemapLanguageGroup.Key.Value;
+                throw new Exception(
+                    $"Language group '{groupName}' contains languages not configured for site: {string.Join(", ", unknownLanguages)}.");
+            }
+        }
+
+        // Ensure each language is present in exactly one language group.
+        var languageMembershipCounts = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
+
+        foreach (var group in languageGroups)
+        {
+            foreach (var lang in group.Languages)
+            {
+                if (!siteLanguages.Contains(lang))
+                {
+                    // Already validated above, but keep defensive guard for future changes.
+                    continue;
+                }
+
+                if (languageMembershipCounts.TryGetValue(lang, out var count))
+                {
+                    languageMembershipCounts[lang] = count + 1;
+                }
+                else
+                {
+                    languageMembershipCounts[lang] = 1;
+                }
+            }
+        }
+
+        // Check for missing or duplicate assignments.
+        var missingLanguages = siteLanguages
+            .Where(lang => !languageMembershipCounts.TryGetValue(lang, out var count) || count == 0)
+            .ToArray();
+
+        if (missingLanguages.Length > 0)
+        {
+            throw new Exception($"Languages not present in any language group: {string.Join(", ", missingLanguages)}.");
+        }
+
+        var duplicateLanguages = languageMembershipCounts
+            .Where(kvp => kvp.Value > 1)
+            .Select(kvp => kvp.Key)
+            .ToArray();
+
+        if (duplicateLanguages.Length > 0)
+        {
+            throw new Exception($"Languages present in multiple language groups: {string.Join(", ", duplicateLanguages)}.");
+        }
+
+        return languageGroups;
     }
 }
