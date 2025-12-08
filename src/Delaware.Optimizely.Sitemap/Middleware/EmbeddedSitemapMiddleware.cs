@@ -37,8 +37,6 @@ public class EmbeddedSitemapMiddleware(
             // Serve sitemap index.
             await WriteSitemapIndexAsync(context, state);
 
-            context.Request.ContentType = "application/xml";
-
             return;
         }
 
@@ -196,6 +194,8 @@ public class EmbeddedSitemapMiddleware(
 
         // Ensure no caching.
         EnsureNoCaching(context);
+
+        context.Response.ContentType = "application/xml";
 
         await context.Response.WriteAsync(result);
 
