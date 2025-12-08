@@ -166,6 +166,7 @@ public class EmbeddedSitemapMiddleware(
 
     private async Task<bool> WriteSitemapIndexAsync(HttpContext context, SitemapState state)
     {
+        // Are there any sitemap entries?
         var totalEntryCount = embeddedSiteCatalogClient.GetCatalogEntryCount(SiteDefinition.Current.Name);
 
         if (totalEntryCount <= 0)
@@ -175,7 +176,10 @@ public class EmbeddedSitemapMiddleware(
 
         var languageGroupKey = DetermineLanguageGroupKey(context);
 
-        var sitemapUrls = GenerateSitemapUrls(SiteDefinition.Current.SiteUrl, languageGroupKey, state);
+        // Get URI from context.
+        var baseUri = GetBaseUri(context);
+
+        var sitemapUrls = GenerateSitemapUrls(baseUri, languageGroupKey, state);
         var index = new SitemapIndex(sitemapUrls.ToList());
 
         using var memory = new MemoryStream();
@@ -183,7 +187,8 @@ public class EmbeddedSitemapMiddleware(
         // Write the XML.
         await sitemapXmlWriter.WriteSitemapIndex(index, memory);
 
-        memory.Seek(0, SeekOrigin.Begin); // Reset the stream position.
+        // Reset the stream position.
+        memory.Seek(0, SeekOrigin.Begin); 
 
         // Convert stream to string.
         using var reader = new StreamReader(memory);
@@ -202,6 +207,20 @@ public class EmbeddedSitemapMiddleware(
         var contentLanguageAccessor = fromHttpContext.RequestServices.GetService<IContentLanguageAccessor>();
 
         return contentLanguageAccessor!.Language;
+    }
+
+    private static Uri GetBaseUri(HttpContext context)
+    {
+        var request = context.Request;
+        var builder = new UriBuilder
+        {
+            Scheme = request.Scheme,
+            Host = request.Host.Host,
+            Port = request.Host.Port ?? (request.Scheme == "https" ? 443 : 80),
+            Path = request.PathBase.ToString()
+        };
+
+        return builder.Uri;
     }
 
     private static void EnsureNoCaching(HttpContext httpContext)
