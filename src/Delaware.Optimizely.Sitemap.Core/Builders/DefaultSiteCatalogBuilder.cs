@@ -7,6 +7,7 @@ using EPiServer;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
 using EPiServer.Web;
+using EPiServer.Web.Mvc.Html.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
@@ -102,7 +103,7 @@ public class DefaultSiteCatalogBuilder(
     {
         return
             WithPageFilter((x, _) => x.Content is not IExcludeFromSitemap)
-                .WithPageFilter((x, _) => x.Content is PageData)
+                .WithPageFilter((x, _) => x.Content is PageData { LinkType: PageShortcutType.Normal })
                 .WithPageFilter(new HasAccessSiteCatalogFilter())
                 .WithBlockFilter((x, _) => x.Content is not MediaData);
     }
