@@ -64,10 +64,8 @@ public class DefaultSitemapXmlStorageProvider(
 
         contentRepository.Save(file, SaveAction.Publish, AccessLevel.NoAccess);
 
-        var urlResolverArgs = new UrlResolverArguments { ForceAbsolute = true };
-
         return urlResolver
-            .GetUrl(file.ContentLink, null, urlResolverArgs);
+            .GetUrl(file.ContentLink, null);
     }
 
     private void EnsureInitialized(
