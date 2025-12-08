@@ -103,6 +103,8 @@ public class FullSiteCatalogJob : ScheduledJobBase
 
             SiteCatalogEventHandler.PublishSiteCatalog(siteCatalog);
 
+            // Might make it configurable to await this or not.
+            // Could be useful when debugging and/or long-running post-publish tasks, if they depend on async too much.
             OnSiteCatalogPublishedAsync(siteCatalog);
         }
 
