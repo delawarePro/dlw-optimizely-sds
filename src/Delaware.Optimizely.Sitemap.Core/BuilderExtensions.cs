@@ -68,7 +68,7 @@ public static class BuilderExtensions
     /// </summary>
     /// <param name="serviceProvider"></param>
     /// <param name="siteDefinition">The site to add a catalog for.</param>
-    /// <param name="languages">*All* languages the sitemap will have to be published in for this site.</param>
+    /// <param name="languages">*All* languages to include in sitemap for this site.</param>
     /// <param name="configure"></param>
     public static IServiceProvider AddSitemapCatalog(
         this IServiceProvider serviceProvider,
