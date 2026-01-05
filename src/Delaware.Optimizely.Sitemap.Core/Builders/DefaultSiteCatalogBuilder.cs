@@ -191,16 +191,10 @@ public class DefaultSiteCatalogBuilder(
             throw new ArgumentException($"Specify one or more languages for site catalog {siteDefinition.Name}.");
         }
 
-        var lg = DetermineLanguageGroups(languages, _languageGroups);
         // If there are language groups configured, use those.
         // Otherwise, create a 'Default' language group containing all languages for site.
-        var languageGroups = _languageGroups.Any()
-            ? _languageGroups
-            : new List<SitemapLanguageGroup>
-            {
-                new(new SitemapLanguageGroupKey(DefaultLanguageGroupName), languages ?? [])
-            };
-
+        var languageGroups = DetermineLanguageGroups(languages, _languageGroups);
+        
         return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
         {
             LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups
