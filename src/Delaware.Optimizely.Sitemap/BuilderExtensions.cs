@@ -101,7 +101,7 @@ public static class BuilderExtensions
     /// which calls <see cref="Sitemap.BuilderExtensions.AddSitemapCatalog"/> and <see cref="WithEmbeddedSitemap"/> internally.
     /// </summary>
     /// <param name="siteDefinition">The site definition to create a catalog for.</param>
-    /// <param name="languages">The site's languages the sitemap needs to be published and served in.</param>
+    /// <param name="languages">*All* site's languages the sitemap needs to be published and served in.</param>
     public static IServiceProvider AddEmbeddedSitemapCatalog(
         this IServiceProvider serviceProvider,
         SiteDefinition siteDefinition,

@@ -1,6 +1,7 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Client;
 using Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
+using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using EPiServer.Core;
 using EPiServer.Web;
@@ -19,6 +20,8 @@ public class SiteCatalog(
     public string SiteId => SiteDefinition.Name;
 
     public SiteDefinition SiteDefinition { get; } = siteDefinition;
+
+    public IReadOnlyCollection<SitemapLanguageGroup> LanguageGroups { get; set; } = new List<SitemapLanguageGroup>();
 
     public virtual async Task<SiteCatalogEntriesResult> GetPageEntries(
         IOperationContext context,
@@ -51,6 +54,13 @@ public class SiteCatalog(
         }
 
         return result.Distinct().ToList();
+    }
+
+    public bool TryGetLanguageGroup(SitemapLanguageGroupKey key, out SitemapLanguageGroup? languageGroup)
+    {
+        languageGroup = LanguageGroups.FirstOrDefault(x => x.Key == key);
+
+        return languageGroup != null;
     }
 
     public virtual async Task<SiteCatalogEntriesResult> GetBlockEntries(IOperationContext context, string? next = null)

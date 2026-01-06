@@ -22,16 +22,15 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
     ///  Add a site catalog to publish to sitemap processing.
     /// </summary>
     /// <returns></returns>
-    public SiteCatalogDirectory AddSiteCatalog(
-        SiteDefinition siteDefinition,
-        Action<ISiteCatalogBuilder>? configure = null)
+    public SiteCatalogDirectory AddSiteCatalog(SiteDefinition siteDefinition,
+        Action<ISiteCatalogBuilder>? configure = null, string[]? languages = null)
     {
         if (siteDefinition == null)
         {
             throw new ArgumentNullException(nameof(siteDefinition), "Site definition cannot be null.");
         }
 
-        var siteCatalog = new DefaultSiteCatalogBuilder(serviceProvider, siteDefinition);
+        var siteCatalog = new DefaultSiteCatalogBuilder(serviceProvider, siteDefinition, languages);
         configure?.Invoke(siteCatalog);
 
         var catalog = siteCatalog.Build();

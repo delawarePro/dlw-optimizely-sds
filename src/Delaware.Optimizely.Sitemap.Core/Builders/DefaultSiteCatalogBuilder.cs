@@ -2,16 +2,30 @@
 using Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Filters;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
+using Delaware.Optimizely.Sitemap.Shared.Models;
 using EPiServer;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
+using EPiServer.Data.Entity;
 using EPiServer.Web;
+using EPiServer.Web.Mvc.Html.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
 
-public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDefinition siteDefinition) : ISiteCatalogBuilder
+/// <summary>
+/// Default implementation for <see cref="ISiteCatalogBuilder"/>.
+/// </summary>
+/// <param name="serviceProvider"></param>
+/// <param name="siteDefinition"></param>
+/// <param name="languages"></param>
+public class DefaultSiteCatalogBuilder(
+    IServiceProvider serviceProvider,
+    SiteDefinition siteDefinition,
+    string[]? languages) : ISiteCatalogBuilder
 {
+    public const string DefaultLanguageGroupName = "Default";
+
     private readonly IList<ISiteCatalogFilter> _pageFilters = new List<ISiteCatalogFilter>();
     private readonly IList<ISiteCatalogFilter> _blockFilters = new List<ISiteCatalogFilter>();
     private readonly IList<ISiteCatalogBlockProvider> _blockReferencesProviders = new List<ISiteCatalogBlockProvider>();
@@ -19,6 +33,9 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
     private ISiteCatalogPageProvider? PageProvider { get; set; }
     private ISiteCatalogEntryMapper? DefaultEntryMapper { get; set; }
 
+    private readonly IList<SitemapLanguageGroup> _languageGroups = new List<SitemapLanguageGroup>();
+
+    /// <inheritdoc/>
     public void WithDefaults()
     {
         WithDefaultBlocks()
@@ -27,6 +44,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
             .WithDefaultPageProvider();
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultMapping()
     {
         if (DefaultEntryMapper != null)
@@ -44,6 +62,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithCustomMapping(ISiteCatalogEntryMapper customMapper)
     {
         if (DefaultEntryMapper != null)
@@ -56,6 +75,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithPageFilter(Func<SiteCatalogItem, IOperationContext, bool> filter)
     {
         _pageFilters.Add(new LambdaSiteCatalogFilter(filter));
@@ -63,6 +83,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithPageFilter(ISiteCatalogFilter siteCatalogFilter)
     {
         _pageFilters.Add(siteCatalogFilter);
@@ -70,6 +91,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithBlockFilter(Func<SiteCatalogItem, IOperationContext, bool> filter)
     {
         _blockFilters.Add(new LambdaSiteCatalogFilter(filter));
@@ -77,15 +99,17 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultFilters()
     {
         return
             WithPageFilter((x, _) => x.Content is not IExcludeFromSitemap)
-                .WithPageFilter((x, _) => x.Content is PageData)
+                .WithPageFilter((x, _) => x.Content is PageData { LinkType: PageShortcutType.Normal })
                 .WithPageFilter(new HasAccessSiteCatalogFilter())
                 .WithBlockFilter((x, _) => x.Content is not MediaData);
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultBlocks()
     {
         var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
@@ -96,6 +120,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithBlockRoots(IList<ContentReference>? blockRoots)
     {
         if (blockRoots is not { Count: > 0 })
@@ -112,6 +137,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultPageProvider()
     {
         if (PageProvider != null)
@@ -123,6 +149,7 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
     public ISiteCatalogBuilder WithPageProvider(ISiteCatalogPageProvider pageProvider)
     {
         if (PageProvider != null)
@@ -134,11 +161,115 @@ public class DefaultSiteCatalogBuilder(IServiceProvider serviceProvider, SiteDef
         return this;
     }
 
+    /// <inheritdoc/>
+    public ISiteCatalogBuilder WithLanguageGroup(IReadOnlyCollection<string> languages, string name = DefaultLanguageGroupName)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Specify a language group name.", nameof(name));
+
+        var languageGroupKey = new SitemapLanguageGroupKey(name);
+        if (_languageGroups.Any(lg => lg.Key.Value.Equals(languageGroupKey, StringComparison.InvariantCultureIgnoreCase)))
+            throw new Exception($"A language group with the name '{name}' already exists.");
+
+        _languageGroups.Add(new SitemapLanguageGroup(languageGroupKey, languages));
+
+        return this;
+    }
+
+    /// <summary>
+    /// Builds and returns a configured site catalog instance for the current site definition.
+    /// </summary>
+    /// <returns>An <see cref="ISiteCatalog"/> instance representing the site catalog for the configured site definition.</returns>
+    /// <exception cref="NullReferenceException">Thrown if no page provider or default entry mapper is registered for the site catalog.</exception>
     public ISiteCatalog Build()
     {
         var pageProvider = PageProvider ?? throw new NullReferenceException($"No page provider registered for '{siteDefinition.Name}' site catalog.");
         var defaultMapper = DefaultEntryMapper ?? throw new NullReferenceException($"No default mapping provided for '{siteDefinition.Name}' site catalog.");
 
-        return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders);
+        if (languages == null || !languages.Any())
+        {
+            throw new ArgumentException($"Specify one or more languages for site catalog {siteDefinition.Name}.");
+        }
+
+        // If there are language groups configured, use those.
+        // Otherwise, create a 'Default' language group containing all languages for site.
+        var languageGroups = DetermineLanguageGroups(languages, _languageGroups);
+        
+        return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
+        {
+            LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups
+        };
+    }
+
+    private static IList<SitemapLanguageGroup> DetermineLanguageGroups(string[] languages,
+        IList<SitemapLanguageGroup> languageGroups)
+    {
+        if (!languageGroups.Any())
+        {
+            return new List<SitemapLanguageGroup> { new(DefaultLanguageGroupName, languages) };
+        }
+
+        var siteLanguages = new HashSet<string>(languages, StringComparer.InvariantCultureIgnoreCase);
+
+        // Check if the language groups match the specified *all* languages.
+        foreach (var sitemapLanguageGroup in languageGroups)
+        {
+            var unknownLanguages = sitemapLanguageGroup.Languages
+                .Where(lang => !siteLanguages.Contains(lang))
+                .ToArray();
+
+            if (unknownLanguages.Length > 0)
+            {
+                var groupName = sitemapLanguageGroup.Key.Value;
+                throw new Exception(
+                    $"Language group '{groupName}' contains languages not configured for site: {string.Join(", ", unknownLanguages)}.");
+            }
+        }
+
+        // Ensure each language is present in exactly one language group.
+        var languageMembershipCounts = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
+
+        foreach (var group in languageGroups)
+        {
+            foreach (var lang in group.Languages)
+            {
+                if (!siteLanguages.Contains(lang))
+                {
+                    // Already validated above, but keep defensive guard for future changes.
+                    continue;
+                }
+
+                if (languageMembershipCounts.TryGetValue(lang, out var count))
+                {
+                    languageMembershipCounts[lang] = count + 1;
+                }
+                else
+                {
+                    languageMembershipCounts[lang] = 1;
+                }
+            }
+        }
+
+        // Check for missing or duplicate assignments.
+        var missingLanguages = siteLanguages
+            .Where(lang => !languageMembershipCounts.TryGetValue(lang, out var count) || count == 0)
+            .ToArray();
+
+        if (missingLanguages.Length > 0)
+        {
+            throw new Exception($"Languages not present in any language group: {string.Join(", ", missingLanguages)}.");
+        }
+
+        var duplicateLanguages = languageMembershipCounts
+            .Where(kvp => kvp.Value > 1)
+            .Select(kvp => kvp.Key)
+            .ToArray();
+
+        if (duplicateLanguages.Length > 0)
+        {
+            throw new Exception($"Languages present in multiple language groups: {string.Join(", ", duplicateLanguages)}.");
+        }
+
+        return languageGroups;
     }
 }

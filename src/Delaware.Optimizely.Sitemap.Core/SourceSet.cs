@@ -1,3 +1,8 @@
-﻿namespace Delaware.Optimizely.Sitemap.Core;
+﻿using Delaware.Optimizely.Sitemap.Shared.Models;
 
-public record SourceSet(IReadOnlyCollection<ISiteResource> Resources, Source Source);
+namespace Delaware.Optimizely.Sitemap.Core;
+
+public record SourceSet(
+    IReadOnlyCollection<ISiteResource> Resources,
+    Source Source,
+    SitemapLanguageGroup LanguageGroup);
