@@ -1,5 +1,6 @@
 ﻿using EPiServer;
 using EPiServer.Core;
+using EPiServer.ServiceLocation;
 using EPiServer.Web;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
@@ -12,9 +13,8 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
     private readonly SiteDefinition _siteDefinition;
 
     public DefaultSiteCatalogBlockProvider(
-        IContentLoader contentLoader,
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
-        SiteDefinition siteDefinition) : base(contentLoader, contentLanguageSettingsHandler)
+        SiteDefinition siteDefinition) : base( contentLanguageSettingsHandler)
     {
         _siteDefinition = siteDefinition;
     }
@@ -29,17 +29,19 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
             skip = int.Parse(next);
         }
 
+        var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
         var descendants =
-            ContentLoader
+            contentLoader
                 .GetDescendents(forThisSiteBlockFolder)
+                .ToList() // Materialize first!
                 .Skip(skip.GetValueOrDefault())
                 .Take(take)
                 .ToList();
 
-        var items = descendants.Any() ? ContentLoader
+        var items = descendants.Any() ? contentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())
             : null;
 

@@ -112,10 +112,9 @@ public class DefaultSiteCatalogBuilder(
     /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultBlocks()
     {
-        var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, siteDefinition));
+        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLanguageSettingsHandler, siteDefinition));
 
         return this;
     }
@@ -128,9 +127,8 @@ public class DefaultSiteCatalogBuilder(
             return this;
         }
 
-        var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
-        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLoader, contentLanguageSettingsHandler, blockRoots);
+        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLanguageSettingsHandler, blockRoots);
 
         _blockReferencesProviders.Add(provider);
 

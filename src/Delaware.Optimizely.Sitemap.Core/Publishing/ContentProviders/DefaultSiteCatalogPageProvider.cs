@@ -1,12 +1,12 @@
 ﻿using EPiServer;
 using EPiServer.Core;
+using EPiServer.ServiceLocation;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
 public class DefaultSiteCatalogPageProvider(
-    IContentLoader contentLoader,
     IContentLanguageSettingsHandler contentLanguageSettingsHandler)
-    : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogPageProvider
+    : SiteCatalogContentProviderBase(contentLanguageSettingsHandler), ISiteCatalogPageProvider
 {
     public virtual async Task<SiteCatalogItemsResult> GetPages(ContentReference root, string? next, IOperationContext context)
     {
@@ -18,11 +18,13 @@ public class DefaultSiteCatalogPageProvider(
             skip = int.Parse(next);
         }
 
+        var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
         // Gets a batch of id's.
-        var descendants = ContentLoader
+        var descendants = contentLoader
             .GetDescendents(root)
+            .ToList() // Materialize first!
             .Skip(skip.GetValueOrDefault())
             .Take(take)
             .ToList();
@@ -33,7 +35,7 @@ public class DefaultSiteCatalogPageProvider(
             descendants.Add(root);
         }
 
-        var items = descendants.Any() ? ContentLoader
+        var items = descendants.Any() ? contentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())
             : null;
 
