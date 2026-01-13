@@ -87,8 +87,11 @@ public class DynamicContentSitemapExtractor(IList<IDynamicContentRootProcessor> 
                 // The key of the map is the dynamic content ID.
                 foreach (var forPage in expandResultsForPage)
                 {
-                    // The first one is assumed the default language one, the others the alternatives.
-                    var assumedUrlInDefaultLanguage = forPage.Value.FirstOrDefault();
+                    // Try to find a URL in the language of the group, otherwise take the first one available.
+                    var assumedUrlInDefaultLanguage = 
+                        forPage.Value.FirstOrDefault(i => sourceSet.LanguageGroup.Languages.Contains(i.Language))
+                        ?? forPage.Value.FirstOrDefault();
+                    
                     var languageAlternatives =
                         forPage.Value.Any()
                             ? forPage
