@@ -1,4 +1,5 @@
-﻿using EPiServer;
+﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
+using EPiServer;
 using EPiServer.Core;
 using EPiServer.ServiceLocation;
 using EPiServer.Web;
@@ -33,13 +34,14 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
-        var descendants =
-            contentLoader
-                .GetDescendents(forThisSiteBlockFolder)
-                .ToList() // Materialize first!
-                .Skip(skip.GetValueOrDefault())
-                .Take(take)
-                .ToList();
+
+        // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
+        var allDescendants = contentLoader.GetDescendantsIteratively(forThisSiteBlockFolder, context.Logger);
+
+        var descendants = allDescendants
+            .Skip(skip.GetValueOrDefault())
+            .Take(take)
+            .ToList();
 
         var items = descendants.Any() ? contentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())

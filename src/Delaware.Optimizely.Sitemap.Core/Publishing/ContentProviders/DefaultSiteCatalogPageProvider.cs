@@ -1,4 +1,5 @@
-﻿using EPiServer;
+﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
+using EPiServer;
 using EPiServer.Core;
 using EPiServer.ServiceLocation;
 
@@ -21,10 +22,10 @@ public class DefaultSiteCatalogPageProvider(
         var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
-        // Gets a batch of id's.
-        var descendants = contentLoader
-            .GetDescendents(root)
-            .ToList() // Materialize first!
+        // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
+        var allDescendants = contentLoader.GetDescendantsIteratively(root, context.Logger);
+
+        var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())
             .Take(take)
             .ToList();
