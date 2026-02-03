@@ -1,6 +1,7 @@
 ﻿using EPiServer;
 using EPiServer.Core;
 using EPiServer.ServiceLocation;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -10,10 +11,12 @@ namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 public class ConfigurableSiteCatalogBlockRootProvider(
     IContentLanguageSettingsHandler contentLanguageSettingsHandler,
     IList<ContentReference> blockRoots)
-    : SiteCatalogContentProviderBase( contentLanguageSettingsHandler), ISiteCatalogBlockProvider
+    : SiteCatalogContentProviderBase(contentLanguageSettingsHandler), ISiteCatalogBlockProvider
 {
     public async Task<SiteCatalogItemsResult> GetBlocks(string? next, IOperationContext context)
     {
+        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
+
         // Skip if specified.
         int? skip = null;
         if (!string.IsNullOrEmpty(next))
@@ -22,7 +25,6 @@ public class ConfigurableSiteCatalogBlockRootProvider(
             skip = int.Parse(next);
         }
 
-        var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
         var root = blockRoots

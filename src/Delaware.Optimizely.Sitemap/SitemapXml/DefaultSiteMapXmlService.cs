@@ -8,6 +8,7 @@ using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using Delaware.Optimizely.Sitemap.SitemapXml.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Delaware.Optimizely.Sitemap.SitemapXml;
@@ -73,6 +74,8 @@ internal class DefaultSitemapGeneratorService(
 
             state.FullPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>();
 
+            context.Logger.LogInformation("Generating sitemap XML for {site} and language groups {languageGroups}", siteName, siteCatalog.LanguageGroups.Select(lg => lg.Key));
+            
             foreach (var languageGroup in siteCatalog.LanguageGroups)    
             {
                 var storedPageCount = new StoredPageCount(0);

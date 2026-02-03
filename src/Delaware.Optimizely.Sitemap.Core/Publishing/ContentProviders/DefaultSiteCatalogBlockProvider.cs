@@ -1,8 +1,10 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
 using EPiServer;
 using EPiServer.Core;
+using EPiServer.Core.Internal;
 using EPiServer.ServiceLocation;
 using EPiServer.Web;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -15,7 +17,7 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
 
     public DefaultSiteCatalogBlockProvider(
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
-        SiteDefinition siteDefinition) : base( contentLanguageSettingsHandler)
+        SiteDefinition siteDefinition) : base(contentLanguageSettingsHandler)
     {
         _siteDefinition = siteDefinition;
     }
@@ -30,12 +32,9 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
             skip = int.Parse(next);
         }
 
-        var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
-
+        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
-
-        // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
         var allDescendants = contentLoader.GetDescendantsIteratively(forThisSiteBlockFolder, context.Logger);
 
         var descendants = allDescendants

@@ -2,6 +2,7 @@
 using EPiServer;
 using EPiServer.Core;
 using EPiServer.ServiceLocation;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -19,8 +20,8 @@ public class DefaultSiteCatalogPageProvider(
             skip = int.Parse(next);
         }
 
-        var contentLoader = ServiceLocator.Current.GetInstance<IContentLoader>();
         var take = context.BatchSizeHint ?? DefaultBatchSize;
+        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
 
         // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
         var allDescendants = contentLoader.GetDescendantsIteratively(root, context.Logger);

@@ -6,8 +6,10 @@ using EPiServer.DataAbstraction;
 using EPiServer.DataAccess;
 using EPiServer.Framework.Blobs;
 using EPiServer.Security;
+using EPiServer.ServiceLocation;
 using EPiServer.Web;
 using EPiServer.Web.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.SitemapXml.Storage;
@@ -18,7 +20,6 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 /// would link .xml media types to sitemap items for all XML files - hence: .sdssitemapxml
 /// </summary>
 public class DefaultSitemapXmlStorageProvider(
-    IContentRepository contentRepository,
     IBlobFactory blobFactory,
     IUrlResolver urlResolver,
     IContentTypeRepository contentTypeRepository,
@@ -35,20 +36,22 @@ public class DefaultSitemapXmlStorageProvider(
         int pageNumber,
         bool isDelta)
     {
-        EnsureInitialized(siteDefinition, languageGroup, out var target);
+        var contentRepository = ServiceLocator.Current.GetRequiredService<IContentRepository>();
+
+        EnsureInitialized(contentRepository, siteDefinition, languageGroup, out var target);
 
         var urlSegment = $"{(isDelta ? "D" : string.Empty)}{pageNumber}";
-        var existing = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage());
+        var existingLink = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage())?.ContentLink;
 
-        if (existing != null)
+        if (existingLink != null)
         {
             try
             {
-                contentRepository.Delete(existing.ContentLink, true, AccessLevel.NoAccess);
+                contentRepository.Delete(existingLink, true, AccessLevel.NoAccess);
             }
-            catch
+            catch(Exception e)
             {
-                _logger.LogWarning($"Could not delete sitemap XML page file.");
+                _logger.LogWarning($"Could not delete sitemap XML page file. {e}", e);
             }
         }
 
@@ -68,8 +71,7 @@ public class DefaultSitemapXmlStorageProvider(
             .GetUrl(file.ContentLink, null);
     }
 
-    private void EnsureInitialized(
-        SiteDefinition siteDefinition,
+    private void EnsureInitialized(IContentRepository contentRepository, SiteDefinition siteDefinition,
         SitemapLanguageGroup languageGroup,
         out ContentReference mostSpecificFolder)
     {

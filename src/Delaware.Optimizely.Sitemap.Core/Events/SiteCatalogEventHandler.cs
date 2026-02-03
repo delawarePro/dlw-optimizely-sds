@@ -111,6 +111,8 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
                 }
 
                 await siteCatalogPublisher.Publish(context, siteCatalog, contentLinks);
+
+                _logger.LogInformation("[Sitemap] Publish done for {siteCatalog}", siteCatalog.SiteId);
             }
             catch (Exception ex)
             {
