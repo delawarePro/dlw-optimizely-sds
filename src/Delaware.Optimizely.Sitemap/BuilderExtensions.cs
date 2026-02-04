@@ -67,9 +67,9 @@ public static class BuilderExtensions
         Action<ISiteCatalogsBuilder>? configure = null)
     {
         services
-            .AddSingleton<ISitemapXmlStorageProvider, DefaultSitemapXmlStorageProvider>()
-            .AddSingleton<ISitemapGeneratorService, DefaultSitemapGeneratorService>()
-            .AddSingleton<ISitemapXmlWriter, DefaultSitemapXmlWriter>()
+            .AddTransient<ISitemapXmlStorageProvider, DefaultSitemapXmlStorageProvider>()
+            .AddTransient<ISitemapGeneratorService, DefaultSitemapGeneratorService>()
+            .AddTransient<ISitemapXmlWriter, DefaultSitemapXmlWriter>()
             .AddSingleton<ISitemapProcessorRegistry, SitemapProcessorRegistry>()
             .AddTransient<IEmbeddedSiteCatalogClient, EmbeddedClientSiteCatalogClient>()
             .AddTransient<ISiteCatalogClient, EmbeddedClientSiteCatalogClient>() // Replaces noop-client.
