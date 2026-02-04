@@ -1,15 +1,15 @@
 ﻿using System.Globalization;
 using EPiServer;
 using EPiServer.Core;
-using EPiServer.ServiceLocation;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
 public abstract class SiteCatalogContentProviderBase(
+    IContentLoader contentLoader,
     IContentLanguageSettingsHandler contentLanguageSettingsHandler)
 {
     protected const int DefaultBatchSize = 100;
+    protected readonly IContentLoader ContentLoader = contentLoader;
     protected readonly IContentLanguageSettingsHandler ContentLanguageSettingsHandler = contentLanguageSettingsHandler;
 
     public virtual Task<IReadOnlyCollection<SiteCatalogItem>> GetContent(params IContent[] contentItems)
@@ -50,8 +50,7 @@ public abstract class SiteCatalogContentProviderBase(
             var cultureInfoForGroup = CultureInfo.GetCultureInfo(group.Key);
             var contentLinks = group.Select(x => x.Value).ToArray();
             var languageLoaderOption = new LoaderOptions { LanguageLoaderOption.Fallback(cultureInfoForGroup) };
-            var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
-            var items = contentLoader.GetItems(contentLinks, languageLoaderOption);
+            var items = ContentLoader.GetItems(contentLinks, languageLoaderOption);
 
             foreach (var item in items)
             {

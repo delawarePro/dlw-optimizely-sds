@@ -1,14 +1,13 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
 using EPiServer;
 using EPiServer.Core;
-using EPiServer.ServiceLocation;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
 public class DefaultSiteCatalogPageProvider(
+    IContentLoader contentLoader,
     IContentLanguageSettingsHandler contentLanguageSettingsHandler)
-    : SiteCatalogContentProviderBase(contentLanguageSettingsHandler), ISiteCatalogPageProvider
+    : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogPageProvider
 {
     public virtual async Task<SiteCatalogItemsResult> GetPages(ContentReference root, string? next, IOperationContext context)
     {
@@ -21,10 +20,9 @@ public class DefaultSiteCatalogPageProvider(
         }
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
-        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
 
         // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
-        var allDescendants = contentLoader.GetDescendantsIteratively(root, context.Logger);
+        var allDescendants = ContentLoader.GetDescendantsIteratively(root, context.Logger).ToList();
 
         var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())
@@ -37,7 +35,7 @@ public class DefaultSiteCatalogPageProvider(
             descendants.Add(root);
         }
 
-        var items = descendants.Any() ? contentLoader
+        var items = descendants.Any() ? ContentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())
             : null;
 

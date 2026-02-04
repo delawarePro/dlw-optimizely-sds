@@ -112,9 +112,10 @@ public class DefaultSiteCatalogBuilder(
     /// <inheritdoc/>
     public ISiteCatalogBuilder WithDefaultBlocks()
     {
+        var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLanguageSettingsHandler, siteDefinition));
+        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, siteDefinition));
 
         return this;
     }
@@ -127,8 +128,9 @@ public class DefaultSiteCatalogBuilder(
             return this;
         }
 
+        var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
-        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLanguageSettingsHandler, blockRoots);
+        var provider = new ConfigurableSiteCatalogBlockRootProvider(contentLoader, contentLanguageSettingsHandler, blockRoots);
 
         _blockReferencesProviders.Add(provider);
 
@@ -192,7 +194,7 @@ public class DefaultSiteCatalogBuilder(
         // If there are language groups configured, use those.
         // Otherwise, create a 'Default' language group containing all languages for site.
         var languageGroups = DetermineLanguageGroups(languages, _languageGroups);
-        
+
         return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
         {
             LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups

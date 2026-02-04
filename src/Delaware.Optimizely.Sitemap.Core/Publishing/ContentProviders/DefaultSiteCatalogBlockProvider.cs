@@ -16,8 +16,9 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
     private readonly SiteDefinition _siteDefinition;
 
     public DefaultSiteCatalogBlockProvider(
+        IContentLoader contentLoader,
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
-        SiteDefinition siteDefinition) : base(contentLanguageSettingsHandler)
+        SiteDefinition siteDefinition) : base(contentLoader, contentLanguageSettingsHandler)
     {
         _siteDefinition = siteDefinition;
     }
@@ -33,16 +34,15 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
         }
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
-        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
-        var allDescendants = contentLoader.GetDescendantsIteratively(forThisSiteBlockFolder, context.Logger);
+        var allDescendants = ContentLoader.GetDescendantsIteratively(forThisSiteBlockFolder, context.Logger);
 
         var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())
             .Take(take)
             .ToList();
 
-        var items = descendants.Any() ? contentLoader
+        var items = descendants.Any() ? ContentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())
             : null;
 

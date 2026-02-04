@@ -1,7 +1,5 @@
 ﻿using EPiServer;
 using EPiServer.Core;
-using EPiServer.ServiceLocation;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -9,14 +7,13 @@ namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 /// This <see cref="ISiteCatalogBlockProvider"/> allows to register one or more block roots to be iterated over when publishing sitemaps.
 /// </summary>
 public class ConfigurableSiteCatalogBlockRootProvider(
+    IContentLoader contentLoader,
     IContentLanguageSettingsHandler contentLanguageSettingsHandler,
     IList<ContentReference> blockRoots)
-    : SiteCatalogContentProviderBase(contentLanguageSettingsHandler), ISiteCatalogBlockProvider
+    : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogBlockProvider
 {
     public async Task<SiteCatalogItemsResult> GetBlocks(string? next, IOperationContext context)
     {
-        var contentLoader = ServiceLocator.Current.GetRequiredService<IContentLoader>();
-
         // Skip if specified.
         int? skip = null;
         if (!string.IsNullOrEmpty(next))
@@ -37,12 +34,12 @@ public class ConfigurableSiteCatalogBlockRootProvider(
         }
 
         // Gets a batch of id's.
-        var descendants = contentLoader
+        var descendants = ContentLoader
             .GetDescendents(root)
             .Take(take)
             .ToList();
 
-        var items = descendants.Any() ? contentLoader
+        var items = descendants.Any() ? ContentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())
             : null;
 
