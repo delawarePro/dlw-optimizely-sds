@@ -103,9 +103,6 @@ internal class DefaultSitemapGeneratorService(
                         state.FullPagesPerLanguageGroup[languageGroup.Key][sitemapPageCount++] = sitemapXmlPageUrl;
                     }
 
-                    // Intermediate save.
-                    embeddedSiteCatalogClient.SaveState(state);
-
                     processedCount += entries.Count;
                     currentEntryBatch = ++currentEntryBatch;
                 }

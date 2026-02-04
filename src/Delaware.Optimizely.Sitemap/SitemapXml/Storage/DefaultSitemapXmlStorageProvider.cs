@@ -6,10 +6,8 @@ using EPiServer.DataAbstraction;
 using EPiServer.DataAccess;
 using EPiServer.Framework.Blobs;
 using EPiServer.Security;
-using EPiServer.ServiceLocation;
 using EPiServer.Web;
 using EPiServer.Web.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.SitemapXml.Storage;
@@ -20,6 +18,7 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 /// would link .xml media types to sitemap items for all XML files - hence: .sdssitemapxml
 /// </summary>
 public class DefaultSitemapXmlStorageProvider(
+    IContentRepository contentRepository,
     IBlobFactory blobFactory,
     IUrlResolver urlResolver,
     IContentTypeRepository contentTypeRepository,
@@ -32,26 +31,24 @@ public class DefaultSitemapXmlStorageProvider(
     public string Store(
         SiteDefinition siteDefinition,
         SitemapLanguageGroup languageGroup,
-        Stream inputStream, 
+        Stream inputStream,
         int pageNumber,
         bool isDelta)
     {
-        var contentRepository = ServiceLocator.Current.GetRequiredService<IContentRepository>();
-
-        EnsureInitialized(contentRepository, siteDefinition, languageGroup, out var target);
+        EnsureInitialized(siteDefinition, languageGroup, out var target);
 
         var urlSegment = $"{(isDelta ? "D" : string.Empty)}{pageNumber}";
-        var existingLink = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage())?.ContentLink;
+        var existing = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage());
 
-        if (existingLink != null)
+        if (existing != null)
         {
             try
             {
-                contentRepository.Delete(existingLink, true, AccessLevel.NoAccess);
+                contentRepository.Delete(existing.ContentLink, true, AccessLevel.NoAccess);
             }
-            catch(Exception e)
+            catch
             {
-                _logger.LogWarning($"Could not delete sitemap XML page file. {e}", e);
+                _logger.LogWarning($"Could not delete sitemap XML page file.");
             }
         }
 
@@ -71,7 +68,8 @@ public class DefaultSitemapXmlStorageProvider(
             .GetUrl(file.ContentLink, null);
     }
 
-    private void EnsureInitialized(IContentRepository contentRepository, SiteDefinition siteDefinition,
+    private void EnsureInitialized(
+        SiteDefinition siteDefinition,
         SitemapLanguageGroup languageGroup,
         out ContentReference mostSpecificFolder)
     {
