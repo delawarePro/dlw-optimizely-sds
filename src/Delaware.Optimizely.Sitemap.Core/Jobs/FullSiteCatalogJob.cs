@@ -5,6 +5,7 @@ using Delaware.Optimizely.Sitemap.Shared;
 using EPiServer.DataAbstraction;
 using EPiServer.PlugIn;
 using EPiServer.Scheduler;
+using EPiServer.ServiceLocation;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Jobs;
@@ -23,17 +24,20 @@ public class FullSiteCatalogJob : ScheduledJobBase
 {
     public const string JobId = "B101435E-0754-4054-9513-2D5D082C7DD0";
 
+    protected readonly IBackgroundContextFactory BackgroundContextFactory;
     protected readonly SiteCatalogEventHandler? SiteCatalogEventHandler;
     protected readonly SiteCatalogDirectory? SiteCatalogDirectory;
     protected readonly ILogger<FullSiteCatalogJob> Logger;
     protected bool StopSignaled;
 
     public FullSiteCatalogJob(
+        IBackgroundContextFactory backgroundContextFactory,
         ILoggerFactory loggerFactory,
         SiteCatalogEventHandler? siteCatalogEventHandler = null,
         SiteCatalogDirectory? siteCatalogDirectory = null)
     {
         Logger = loggerFactory.CreateLogger<FullSiteCatalogJob>();
+        BackgroundContextFactory = backgroundContextFactory;
         SiteCatalogEventHandler = siteCatalogEventHandler;
         SiteCatalogDirectory = siteCatalogDirectory;
 
@@ -56,11 +60,20 @@ public class FullSiteCatalogJob : ScheduledJobBase
             return alreadyRunningMsg;
         }
 
-        return DoSiteCatalogPublishes();
+
+        var result = Task.Run(DoSiteCatalogPublishes)
+            .GetAwaiter()
+            .GetResult();
+
+        Logger.LogInformation(result);
+
+        return result;
     }
 
-    protected string DoSiteCatalogPublishes()
+    protected async Task<string> DoSiteCatalogPublishes()
     {
+        using var backgroundContext = BackgroundContextFactory.Create();
+
         Logger.LogInformation($"Started {nameof(ScheduledJob)}.");
 
         if (SiteCatalogEventHandler == null)
@@ -103,9 +116,7 @@ public class FullSiteCatalogJob : ScheduledJobBase
 
             SiteCatalogEventHandler.PublishSiteCatalog(siteCatalog);
 
-            // Might make it configurable to await this or not.
-            // Could be useful when debugging and/or long-running post-publish tasks, if they depend on async too much.
-            OnSiteCatalogPublishedAsync(siteCatalog);
+            await OnSiteCatalogPublishedAsync(siteCatalog);
         }
 
         var msg2 = $"[Sitemap] '{nameof(FullSiteCatalogJob)}' finished.";

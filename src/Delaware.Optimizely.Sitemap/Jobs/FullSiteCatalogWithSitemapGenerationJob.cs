@@ -5,28 +5,33 @@ using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.SitemapXml;
 using EPiServer.DataAbstraction;
 using EPiServer.PlugIn;
+using EPiServer.ServiceLocation;
 using Microsoft.Extensions.Logging;
 
-namespace Delaware.Optimizely.Sitemap.Jobs
-{
-    [ScheduledPlugIn(
-        GUID = JobId,
-        DisplayName = "[delaware sitemap] Fully process site catalogs and create sitemap XML files",
-        IntervalType = ScheduledIntervalType.Days,
-        IntervalLength = 1,
-        DefaultEnabled = true)]
-    public class FullSiteCatalogWithSitemapGenerationJob(
-        ILoggerFactory loggerFactory,
-        ISitemapGeneratorService sitemapGeneratorService,
-        SiteCatalogEventHandler? siteCatalogEventHandler = null,
-        SiteCatalogDirectory? siteCatalogDirectory = null)
-        : FullSiteCatalogJob(loggerFactory, siteCatalogEventHandler, siteCatalogDirectory)
-    {
-        public new const string JobId = "{08E2879D-1903-44AF-913C-0D967BFFFF68}";
+namespace Delaware.Optimizely.Sitemap.Jobs;
 
-        protected override async Task OnSiteCatalogPublishedAsync(ISiteCatalog siteCatalog)
-        {
-            await sitemapGeneratorService.GenerateAndPersistAsync(new OperationContext(), siteCatalog);
-        }
+[ScheduledPlugIn(
+    GUID = JobId,
+    DisplayName = "[delaware sitemap] Fully process site catalogs and create sitemap XML files",
+    IntervalType = ScheduledIntervalType.Days,
+    IntervalLength = 1,
+    DefaultEnabled = true)]
+public class FullSiteCatalogWithSitemapGenerationJob(
+    ILoggerFactory loggerFactory,
+    IBackgroundContextFactory backgroundContextFactory,
+    ISitemapGeneratorService sitemapGeneratorService,
+    SiteCatalogEventHandler? siteCatalogEventHandler = null,
+    SiteCatalogDirectory? siteCatalogDirectory = null)
+    : FullSiteCatalogJob(backgroundContextFactory, loggerFactory, siteCatalogEventHandler, siteCatalogDirectory)
+{
+    public new const string JobId = "{08E2879D-1903-44AF-913C-0D967BFFFF68}";
+
+    protected override async Task OnSiteCatalogPublishedAsync(ISiteCatalog siteCatalog)
+    {
+        Logger.LogInformation($"Generating sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
+
+        await sitemapGeneratorService.GenerateAndPersistAsync(new OperationContext(), siteCatalog);
+
+        Logger.LogInformation($"Generated sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
     }
 }
