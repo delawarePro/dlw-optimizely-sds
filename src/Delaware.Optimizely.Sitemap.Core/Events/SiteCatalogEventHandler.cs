@@ -60,6 +60,12 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
                     return;
                 }
 
+                if (request.SiteCatalog == null)
+                {
+                    _logger.LogWarning($"'{nameof(OnPublishSiteCatalogEvent)}' ignored. No site catalog provided");
+                    return;
+                }
+
                 var context = new OperationContext(logger: _logger);
 
                 await siteCatalogPublisher.Publish(context, request.SiteCatalog);

@@ -37,6 +37,12 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
 
     public virtual Task Publish(IOperationContext context, ISiteCatalog siteCatalog)
     {
+        if (siteCatalog == null || string.IsNullOrWhiteSpace(siteCatalog.SiteId))
+        {
+            context.Logger.LogWarning($"'{nameof(Publish)}' ignored. No site catalog provided");
+            return Task.CompletedTask;
+        }
+
         var siteDefinition = _siteDefinitionRepository.Get(siteCatalog.SiteId);
         if (siteDefinition == null)
         {
@@ -48,7 +54,7 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
     }
 
     public virtual async Task Publish(
-        IOperationContext context, 
+        IOperationContext context,
         ISiteCatalog siteCatalog,
         params ContentReference[] contentLinks)
     {

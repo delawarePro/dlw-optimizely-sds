@@ -30,7 +30,7 @@ public class FullSiteCatalogWithSitemapGenerationJob(
     {
         Logger.LogInformation($"Generating sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
 
-        await sitemapGeneratorService.GenerateAndPersistAsync(new OperationContext(), siteCatalog);
+        await sitemapGeneratorService.GenerateAndPersistAsync(new OperationContext(logger: Logger), siteCatalog);
 
         Logger.LogInformation($"Generated sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
     }
