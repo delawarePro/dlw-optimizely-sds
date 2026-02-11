@@ -1,5 +1,4 @@
-﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
-using EPiServer;
+﻿using EPiServer;
 using EPiServer.Core;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
@@ -21,8 +20,7 @@ public class DefaultSiteCatalogPageProvider(
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
-        // Use iterative approach to fetch descendants to avoid database connection issues (which can occur with GetDescendants).
-        var allDescendants = ContentLoader.GetDescendantsIteratively(root, context.Logger).ToList();
+        var allDescendants = ContentLoader.GetDescendents(root).ToList();
 
         var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())

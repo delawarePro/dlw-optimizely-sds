@@ -1,10 +1,6 @@
-﻿using Delaware.Optimizely.Sitemap.Core.Extensions;
-using EPiServer;
+﻿using EPiServer;
 using EPiServer.Core;
-using EPiServer.Core.Internal;
-using EPiServer.ServiceLocation;
 using EPiServer.Web;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -35,7 +31,7 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
-        var allDescendants = ContentLoader.GetDescendantsIteratively(forThisSiteBlockFolder, context.Logger);
+        var allDescendants = ContentLoader.GetDescendents(forThisSiteBlockFolder);
 
         var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())
