@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Text.Json;
+using System.Xml;
 using Delaware.Optimizely.Sitemap.Client;
 using Delaware.Optimizely.Sitemap.Core;
 using Delaware.Optimizely.Sitemap.Core.Client;
@@ -22,7 +23,7 @@ internal class DefaultSitemapGeneratorService(
     : ISitemapGeneratorService
 {
     public async Task<SitemapState?> GenerateAndPersistDeltaAsync(
-        IOperationContext context, 
+        IOperationContext context,
         ISiteCatalog siteCatalog,
         IReadOnlyCollection<SiteCatalogEntry> updates)
     {
@@ -100,6 +101,7 @@ internal class DefaultSitemapGeneratorService(
                             state.FullPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
                         }
 
+                        context?.Logger.LogInformation(">>> {siteCatalog} - {languageGroupKey} - {sitemapXmlPageUrl}", siteCatalog.SiteId, languageGroup.Key, sitemapXmlPageUrl);
                         state.FullPagesPerLanguageGroup[languageGroup.Key][sitemapPageCount++] = sitemapXmlPageUrl;
                     }
 
@@ -112,7 +114,17 @@ internal class DefaultSitemapGeneratorService(
             state.LastFullGenerationUtc = DateTime.UtcNow;
             state.DeltaPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>(0);
 
-            // TODO clean in a new way? siteCatalog.SitemapXmlStorageProvider.Clean(state);
+            string stateAsString;
+            try
+            {
+                stateAsString = JsonSerializer.Serialize(state);
+            }
+            catch
+            {
+                stateAsString = "[corrupt]";
+            }
+
+            context?.Logger?.LogInformation("Saving state for {siteCatalog.SiteId}: {stateAsString}", siteCatalog.SiteId, stateAsString);
 
             embeddedSiteCatalogClient.SaveState(state);
 

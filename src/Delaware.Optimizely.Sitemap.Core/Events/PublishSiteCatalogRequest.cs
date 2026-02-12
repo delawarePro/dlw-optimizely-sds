@@ -22,6 +22,8 @@ public sealed class PublishSiteCatalogRequest
     [DataMember(Order = 1, IsRequired = true)]
     public string SiteId { get; init; }
 
+    // For backwards compatibility. Site catalog is not serialized in the event, but can be set by the publisher before raising the event.
+    // Remove in a future release.
     [IgnoreDataMember]
     public ISiteCatalog? SiteCatalog { get; set; }
 }
