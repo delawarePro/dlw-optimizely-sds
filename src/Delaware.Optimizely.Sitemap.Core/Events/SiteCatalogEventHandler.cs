@@ -29,7 +29,7 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
         {
             eventRegistry
                 .Get(PublishSiteCatalogEventId)
-                .Raise(PublishSiteCatalogEventId, new PublishSiteCatalogRequest(siteCatalog));
+                .Raise(PublishSiteCatalogEventId, new PublishSiteCatalogRequest(siteCatalog.SiteId));
         }
 
         public virtual void Initialize()
@@ -60,7 +60,14 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
                     return;
                 }
 
-                if (request.SiteCatalog == null)
+                var siteCatalog = request.SiteCatalog;
+
+                if (siteCatalog == null && !string.IsNullOrWhiteSpace(request.SiteId))
+                {
+                    siteCatalogDirectory.TryGetSiteCatalog(request.SiteId, out siteCatalog);
+                }
+
+                if (siteCatalog == null)
                 {
                     _logger.LogWarning($"'{nameof(OnPublishSiteCatalogEvent)}' ignored. No site catalog provided");
                     return;
@@ -68,7 +75,7 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
 
                 var context = new OperationContext(logger: _logger);
 
-                await siteCatalogPublisher.Publish(context, request.SiteCatalog);
+                await siteCatalogPublisher.Publish(context, siteCatalog);
             }
             catch (Exception ex)
             {

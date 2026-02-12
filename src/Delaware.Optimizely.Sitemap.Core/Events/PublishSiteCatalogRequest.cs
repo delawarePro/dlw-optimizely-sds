@@ -6,14 +6,24 @@ namespace Delaware.Optimizely.Sitemap.Core.Events;
 
 [DataContract]
 [EventsServiceKnownType]
-public class PublishSiteCatalogRequest
+public sealed class PublishSiteCatalogRequest
 {
+    public PublishSiteCatalogRequest(string siteId)
+    {
+        SiteId = siteId;
+    }
+
     public PublishSiteCatalogRequest(ISiteCatalog siteCatalog)
     {
         SiteCatalog = siteCatalog;
+        SiteId = siteCatalog.SiteId;
     }
 
-    public ISiteCatalog SiteCatalog { get; set; }
+    [DataMember(Order = 1, IsRequired = true)]
+    public string SiteId { get; init; }
+
+    [IgnoreDataMember]
+    public ISiteCatalog? SiteCatalog { get; set; }
 }
 
 [DataContract]
