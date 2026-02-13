@@ -22,7 +22,7 @@ internal class DefaultSitemapGeneratorService(
     IOptions<EmbeddedSitemapOptions> options)
     : ISitemapGeneratorService
 {
-    public async Task<SitemapState?> GenerateAndPersistDeltaAsync(
+    public async Task<SitemapStateV2?> GenerateAndPersistDeltaAsync(
         IOperationContext context,
         ISiteCatalog siteCatalog,
         IReadOnlyCollection<SiteCatalogEntry> updates)
@@ -64,7 +64,7 @@ internal class DefaultSitemapGeneratorService(
         return state;
     }
 
-    public async Task<SitemapState?> GenerateAndPersistAsync(IOperationContext context, ISiteCatalog siteCatalog)
+    public async Task<SitemapStateV2?> GenerateAndPersistAsync(IOperationContext context, ISiteCatalog siteCatalog)
     {
         using (new SiteContextSwitcher(siteCatalog.SiteDefinition))
         {

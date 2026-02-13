@@ -12,12 +12,12 @@ public interface IEmbeddedSiteCatalogClient : ISiteCatalogClient
 
     int GetCatalogEntryCount(string forSiteName);
 
-    void SaveState(SitemapState state);
+    void SaveState(SitemapStateV2 stateV2);
 
     /// <summary>
     /// Gets the current site map state for a given site. Creates a new instance if no instance is found.
     /// </summary>
     /// <param name="forSiteName"></param>
     /// <returns></returns>
-    SitemapState GetState(string forSiteName);
+    SitemapStateV2 GetState(string forSiteName);
 }

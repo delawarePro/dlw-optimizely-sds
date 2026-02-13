@@ -6,9 +6,9 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml;
 
 public interface ISitemapGeneratorService
 {
-    Task<SitemapState?> GenerateAndPersistAsync(IOperationContext context, ISiteCatalog siteCatalog);
+    Task<SitemapStateV2?> GenerateAndPersistAsync(IOperationContext context, ISiteCatalog siteCatalog);
 
-    Task<SitemapState?> GenerateAndPersistDeltaAsync(
+    Task<SitemapStateV2?> GenerateAndPersistDeltaAsync(
         IOperationContext context,
         ISiteCatalog siteCatalog,
         IReadOnlyCollection<SiteCatalogEntry> updates);

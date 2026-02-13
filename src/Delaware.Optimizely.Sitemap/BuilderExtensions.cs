@@ -87,7 +87,7 @@ public static class BuilderExtensions
         parameters.IndexNames.Add(nameof(SiteCatalogEntry.SiteName));
 
         DynamicDataStoreFactory.Instance.CreateStore(typeof(SiteCatalogEntry), parameters);
-        DynamicDataStoreFactory.Instance.CreateStore(typeof(SitemapState));
+        DynamicDataStoreFactory.Instance.CreateStore(typeof(SitemapStateV2));
 
         applicationBuilder.MapSitemapEndpoints();
 
