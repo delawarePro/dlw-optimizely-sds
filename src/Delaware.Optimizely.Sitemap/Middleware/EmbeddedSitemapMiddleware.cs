@@ -28,21 +28,21 @@ public class EmbeddedSitemapMiddleware(
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        SitemapState state;
+        SitemapStateV2 stateV2;
 
         if (context.Request.Path.StartsWithSegments(options.Value.SitemapEntryPath, StringComparison.InvariantCultureIgnoreCase))
         {
-            state = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
+            stateV2 = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
 
             // Serve sitemap index.
-            await WriteSitemapIndexAsync(context, state);
+            await WriteSitemapIndexAsync(context, stateV2);
 
             return;
         }
 
         if (context.Request.Path.Value != null && context.Request.Path.Value.EndsWith(".xml"))
         {
-            state = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
+            stateV2 = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
 
             // Serve sitemap page.
             if (TryParseSitemapPageNumber(context.Request.Path, out var sitemapPageIndex, out var isDelta)
@@ -50,7 +50,7 @@ public class EmbeddedSitemapMiddleware(
             {
                 var languageGroupKey = DetermineLanguageGroupKey(context);
 
-                if (TryGetPageLocation(state, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
+                if (TryGetPageLocation(stateV2, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
                     && location != null
                     && TryGetMediaByUrl(location, out var blob)
                     && blob != null)
@@ -96,7 +96,7 @@ public class EmbeddedSitemapMiddleware(
     }
 
     private static bool TryGetPageLocation(
-        SitemapState state,
+        SitemapStateV2 stateV2,
         string languageGroupKey,
         bool isDelta,
         int sitemapPageIndex,
@@ -106,7 +106,7 @@ public class EmbeddedSitemapMiddleware(
 
         if (isDelta)
         {
-            if (state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var deltaPages)
+            if (stateV2.DeltaPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var deltaPages)
                 && deltaPages.TryGetValue(sitemapPageIndex, out var delta))
             {
                 location = delta;
@@ -116,7 +116,7 @@ public class EmbeddedSitemapMiddleware(
             return false;
         }
 
-        if (state.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages)
+        if (stateV2.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages)
             && fullPages.TryGetValue(sitemapPageIndex, out var page))
         {
             location = page;
@@ -162,7 +162,7 @@ public class EmbeddedSitemapMiddleware(
         return false;
     }
 
-    private async Task<bool> WriteSitemapIndexAsync(HttpContext context, SitemapState state)
+    private async Task<bool> WriteSitemapIndexAsync(HttpContext context, SitemapStateV2 stateV2)
     {
         // Are there any sitemap entries?
         var totalEntryCount = embeddedSiteCatalogClient.GetCatalogEntryCount(SiteDefinition.Current.Name);
@@ -177,7 +177,7 @@ public class EmbeddedSitemapMiddleware(
         // Get URI from context.
         var baseUri = GetBaseUri(context);
 
-        var sitemapUrls = GenerateSitemapUrls(baseUri, languageGroupKey, state);
+        var sitemapUrls = GenerateSitemapUrls(baseUri, languageGroupKey, stateV2);
         var index = new SitemapIndex(sitemapUrls.ToList());
 
         using var memory = new MemoryStream();
@@ -254,7 +254,7 @@ public class EmbeddedSitemapMiddleware(
     private static IEnumerable<SitemapUrl> GenerateSitemapUrls(
         Uri baseUrl,
         SitemapLanguageGroupKey languageGroupKey,
-        SitemapState? state)
+        SitemapStateV2? state)
     {
         if (state == null || !state.FullPagesPerLanguageGroup.TryGetValue(languageGroupKey, out var fullPages))
         {
