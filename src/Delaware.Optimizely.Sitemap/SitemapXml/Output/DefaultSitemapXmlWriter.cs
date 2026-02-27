@@ -8,7 +8,7 @@ namespace Delaware.Optimizely.Sitemap.SitemapXml.Output;
 public class DefaultSitemapXmlWriter : ISitemapXmlWriter
 {
     private const string _sitemapNs = "http://www.sitemaps.org/schemas/sitemap/0.9";
-    private const string _xhtmlNs = "http://www.w3.org/1999/xhtml/";
+    private const string _xhtmlNs = "http://www.w3.org/1999/xhtml";
     private const string _xsiNs = "http://www.w3.org/2001/XMLSchema-instance";
     private const string _schemaLocation = "http://www.sitemaps.org/schemas/sitemap/0.9 " +
                                            "http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd " +
