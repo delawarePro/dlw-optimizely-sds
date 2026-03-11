@@ -4,10 +4,6 @@
 
 The **Embedded Site Discovery Service**  is a tool designed to create sitemaps for any Optimizely project. It helps **improve SEO** by generating XML sitemaps that search engines can use to index your site(s) more effectively.
 
-## Optimizely NuGet feed
-
-Packages for the Optimizely NuGet feed are currently built against a private version of this repo. A final move to this repo is on the roadmap.
-
 ## Features
 
 - Automatically pre-generates XML sitemaps
@@ -53,7 +49,7 @@ This enables the Sitemap code. The next section shows how to configure this per 
 The Sitemap can be enabled per site instance. Add this for each site to enable Sitemap, where _site_ is a site definition:
 
 ```csharp
-serviceProvider.AddEmbeddedSitemapCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
+serviceProvider.AddEmbeddedSitemapCatalog(site, new[] { "nl", "nl-be", "en" }, catalog => catalog.WithDefaults());
 ```
 
 For example, in an Alloy sample site, in the Startup's Configure(...) method:
@@ -124,6 +120,7 @@ WithPageProvider(ISiteCatalogPageProvider pageProvider)
 ### WithLanguageGroup
 
 Some scenarios require the sitemap files to be split up. A real-world scenario, where a single site definition is hosted for multiple hosts/domains, would benefit from splitting up the sitemap content.
+Google search engine, for example, can complain if multiple hosts are mixed in the same sitemaps, even when the sitemap is valid.
 
 Taking the Alloy site as example, the same site could be hosted for `alloysite.com` in _English_ and `alloysite.se` in _Swedish_.
 

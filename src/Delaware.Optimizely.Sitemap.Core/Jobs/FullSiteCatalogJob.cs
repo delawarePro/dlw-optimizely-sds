@@ -59,8 +59,7 @@ public class FullSiteCatalogJob : ScheduledJobBase
 
             return alreadyRunningMsg;
         }
-
-
+        
         var result = Task.Run(DoSiteCatalogPublishes)
             .GetAwaiter()
             .GetResult();

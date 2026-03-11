@@ -10,6 +10,7 @@ using Delaware.Optimizely.Sitemap.SitemapXml.Multiply;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 using EPiServer.Core;
+using EPiServer.Data;
 using EPiServer.Data.Dynamic;
 using EPiServer.Web;
 using Microsoft.AspNetCore.Builder;
@@ -34,6 +35,16 @@ public static class BuilderExtensions
         IConfiguration configuration,
         Action<ISiteCatalogsBuilder>? configure = null)
     {
+        var dbModeSetting = configuration.GetSection("EPiServer:Cms:DataAccessOptions:ReadOnly").Value;
+        bool isReadOnly = bool.TryParse(dbModeSetting, out var result) && result;
+
+        if (isReadOnly)
+        {
+            // As this module depends on DDS - which is not available in read-only mode - we skip the sitemap configuration entirely.
+            // App will be restarted after swapping to read/write mode, so this is not a problem.
+            return services;
+        }
+
         services.AddSitemapPublishing(configuration, configure);
         services.AddSitemapServing(configuration);
 
@@ -47,6 +58,15 @@ public static class BuilderExtensions
     /// </summary>
     public static IApplicationBuilder ConfigureSitemap(this IApplicationBuilder app)
     {
+        var databaseMode = app.ApplicationServices.GetService<IDatabaseMode>();
+
+        if (databaseMode is { DatabaseMode: DatabaseMode.ReadOnly })
+        {
+            // As this module depends on DDS - which is not available in read-only mode - we skip the sitemap configuration entirely.
+            // App will be restarted after swapping to read/write mode, so this is not a problem.
+            return app;
+        }
+         
         app.ConfigureSitemapPublishing();
         app.ConfigureSitemapServing();
 

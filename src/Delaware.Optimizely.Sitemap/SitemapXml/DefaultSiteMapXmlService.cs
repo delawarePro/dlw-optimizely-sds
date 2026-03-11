@@ -119,8 +119,9 @@ internal class DefaultSitemapGeneratorService(
             {
                 stateAsString = JsonSerializer.Serialize(state);
             }
-            catch
+            catch(Exception ex)
             {
+                context?.Logger?.LogError(ex, "Failed to serialize sitemap state for {siteCatalog.SiteId} - {Error}", siteCatalog.SiteId, ex);
                 stateAsString = "[corrupt]";
             }
 
