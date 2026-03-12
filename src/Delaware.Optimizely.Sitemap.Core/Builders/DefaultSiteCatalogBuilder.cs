@@ -194,7 +194,7 @@ public class DefaultSiteCatalogBuilder(
         // If there are language groups configured, use those.
         // Otherwise, create a 'Default' language group containing all languages for site.
         var languageGroups = DetermineLanguageGroups(languages, _languageGroups);
-        
+
         return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
         {
             LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups

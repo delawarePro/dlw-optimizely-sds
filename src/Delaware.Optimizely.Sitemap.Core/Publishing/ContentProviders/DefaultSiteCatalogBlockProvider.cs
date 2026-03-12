@@ -30,14 +30,13 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
         }
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
-
         var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
-        var descendants =
-            ContentLoader
-                .GetDescendents(forThisSiteBlockFolder)
-                .Skip(skip.GetValueOrDefault())
-                .Take(take)
-                .ToList();
+        var allDescendants = ContentLoader.GetDescendents(forThisSiteBlockFolder);
+
+        var descendants = allDescendants
+            .Skip(skip.GetValueOrDefault())
+            .Take(take)
+            .ToList();
 
         var items = descendants.Any() ? ContentLoader
                 .GetItems(descendants, LanguageSelector.MasterLanguage())

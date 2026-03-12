@@ -20,9 +20,9 @@ public class DefaultSiteCatalogPageProvider(
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
 
-        // Gets a batch of id's.
-        var descendants = ContentLoader
-            .GetDescendents(root)
+        var allDescendants = ContentLoader.GetDescendents(root).ToList();
+
+        var descendants = allDescendants
             .Skip(skip.GetValueOrDefault())
             .Take(take)
             .ToList();

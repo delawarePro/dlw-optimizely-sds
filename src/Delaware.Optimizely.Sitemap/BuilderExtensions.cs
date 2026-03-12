@@ -10,6 +10,7 @@ using Delaware.Optimizely.Sitemap.SitemapXml.Multiply;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 using EPiServer.Core;
+using EPiServer.Data;
 using EPiServer.Data.Dynamic;
 using EPiServer.Web;
 using Microsoft.AspNetCore.Builder;
@@ -34,6 +35,16 @@ public static class BuilderExtensions
         IConfiguration configuration,
         Action<ISiteCatalogsBuilder>? configure = null)
     {
+        var dbModeSetting = configuration.GetSection("EPiServer:Cms:DataAccessOptions:ReadOnly").Value;
+        bool isReadOnly = bool.TryParse(dbModeSetting, out var result) && result;
+
+        if (isReadOnly)
+        {
+            // As this module depends on DDS - which is not available in read-only mode - we skip the sitemap configuration entirely.
+            // App will be restarted after swapping to read/write mode, so this is not a problem.
+            return services;
+        }
+
         services.AddSitemapPublishing(configuration, configure);
         services.AddSitemapServing(configuration);
 
@@ -47,6 +58,15 @@ public static class BuilderExtensions
     /// </summary>
     public static IApplicationBuilder ConfigureSitemap(this IApplicationBuilder app)
     {
+        var databaseMode = app.ApplicationServices.GetService<IDatabaseMode>();
+
+        if (databaseMode is { DatabaseMode: DatabaseMode.ReadOnly })
+        {
+            // As this module depends on DDS - which is not available in read-only mode - we skip the sitemap configuration entirely.
+            // App will be restarted after swapping to read/write mode, so this is not a problem.
+            return app;
+        }
+         
         app.ConfigureSitemapPublishing();
         app.ConfigureSitemapServing();
 
@@ -67,9 +87,9 @@ public static class BuilderExtensions
         Action<ISiteCatalogsBuilder>? configure = null)
     {
         services
-            .AddSingleton<ISitemapXmlStorageProvider, DefaultSitemapXmlStorageProvider>()
-            .AddSingleton<ISitemapGeneratorService, DefaultSitemapGeneratorService>()
-            .AddSingleton<ISitemapXmlWriter, DefaultSitemapXmlWriter>()
+            .AddTransient<ISitemapXmlStorageProvider, DefaultSitemapXmlStorageProvider>()
+            .AddTransient<ISitemapGeneratorService, DefaultSitemapGeneratorService>()
+            .AddTransient<ISitemapXmlWriter, DefaultSitemapXmlWriter>()
             .AddSingleton<ISitemapProcessorRegistry, SitemapProcessorRegistry>()
             .AddTransient<IEmbeddedSiteCatalogClient, EmbeddedClientSiteCatalogClient>()
             .AddTransient<ISiteCatalogClient, EmbeddedClientSiteCatalogClient>() // Replaces noop-client.
@@ -87,7 +107,7 @@ public static class BuilderExtensions
         parameters.IndexNames.Add(nameof(SiteCatalogEntry.SiteName));
 
         DynamicDataStoreFactory.Instance.CreateStore(typeof(SiteCatalogEntry), parameters);
-        DynamicDataStoreFactory.Instance.CreateStore(typeof(SitemapState));
+        DynamicDataStoreFactory.Instance.CreateStore(typeof(SitemapStateV2));
 
         applicationBuilder.MapSitemapEndpoints();
 

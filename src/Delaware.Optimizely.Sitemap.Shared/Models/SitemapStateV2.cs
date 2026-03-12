@@ -5,7 +5,7 @@ using EPiServer.Data.Dynamic;
 namespace Delaware.Optimizely.Sitemap.Shared.Models;
 
 [EPiServerDataStore(AutomaticallyCreateStore = false, AutomaticallyRemapStore = true)]
-public class SitemapState : IDynamicData
+public class SitemapStateV2 : IDynamicData
 {
     #region Deprecated
 

@@ -31,7 +31,7 @@ public class DefaultSitemapXmlStorageProvider(
     public string Store(
         SiteDefinition siteDefinition,
         SitemapLanguageGroup languageGroup,
-        Stream inputStream, 
+        Stream inputStream,
         int pageNumber,
         bool isDelta)
     {

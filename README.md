@@ -20,7 +20,9 @@ Packages for the Optimizely NuGet feed are currently built against a private ver
 
 Install the NuGet package, currently available from the Platina feed:
 
-    Install-Package Delaware.Optimizely.Sitemap
+```powershell
+Install-Package Delaware.Optimizely.Sitemap
+```
 
 ## Configuration
 
@@ -28,18 +30,21 @@ Install the NuGet package, currently available from the Platina feed:
 
 Add the following line to your service configuration setup:
 
-    services
-        .AddSitemap(Configuration /* IConfiguration */)
-
+```csharp
+services
+    .AddSitemap(Configuration /* IConfiguration, injected in CTOR of Startup if needed. */)
+```
 ... with the optional registration of dynamic content processors (for more details, see __Dynamic content__)
 
+```csharp
     services
         .AddSingleton<IDynamicContentRootProcessor, CustomDynamicContentRootProcessor>();
-
+```
 ... and the following line to the Middleware setup:
-
-    app
-        .ConfigureSitemap();
+```csharp
+app
+    .ConfigureSitemap();
+```
 
 This enables the Sitemap code. The next section shows how to configure this per site.
 
@@ -47,31 +52,42 @@ This enables the Sitemap code. The next section shows how to configure this per 
 
 The Sitemap can be enabled per site instance. Add this for each site to enable Sitemap, where _site_ is a site definition:
 
-    serviceProvider
-        .AddEmbeddedSitemapCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
+```csharp
+serviceProvider.AddEmbeddedSitemapCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
+```
 
-This configures the site catalog with all defaults.
+For example, in an Alloy sample site, in the Startup's Configure(...) method:
+
+```csharp
+app.ApplicationServices.AddEmbeddedSitemapCatalog(SiteDefinition.Current, new[] { "en", "sv" }, catalog => catalog.WithDefaults());
+```
+
+This configures the site catalog with all default and recommended settings.
 
 ### Customizations
 
 If the default settings don't cover all required Sitemap scenarios, the defaults to pick from in code are:
 
-    serviceProvider
-        .AddSitemapCatalog(site, new [] { /* languages for site */ "en", "nl-be" }
-             catalog => catalog
-            .WithDefaultBlocks()
-            .WithDefaultMapping()
-            .WithBlockRoots(BlockRoots)
-            .WithDefaultFilters()
-            .WithDefaultPageProvider())
-        .WithEmbeddedSitemap(site, languages);
+```csharp
+serviceProvider
+    .AddSitemapCatalog(site, new [] { /* languages for site */ "en", "nl-be" }
+            catalog => catalog
+        .WithDefaultBlocks()
+        .WithDefaultMapping()
+        .WithBlockRoots(BlockRoots)
+        .WithDefaultFilters()
+        .WithDefaultPageProvider())
+    .WithEmbeddedSitemap(site, languages);
+```
 
 #### WithDefaultBlocks
 
 The configuration method **.WithDefaultBlocks()** can be extended with (or replaced by) the following configuration methods:
 
-    .WithBlockRoots( /* list of content references to block containers */)
-    .WithBlockFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
+```csharp
+.WithBlockRoots( /* list of content references to block containers */)
+.WithBlockFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
+```
 
 Block roots: a list of content references to block folders to index for this site.
 With filter: specify custom filtering. 
@@ -82,7 +98,9 @@ By default, the indexing will happen on the _For this site_ folder for the site.
 
 **WithDefaultMapping** registers a service which maps Optimizely content to localized _ISiteCatalogEntry_ items. To customize this, register a custom _ISiteCatalogEntryMapper_ implementation instead:
 
-    WithCustomMapping(ISiteCatalogEntryMapper customEntryMapper)
+```csharp
+WithCustomMapping(ISiteCatalogEntryMapper customEntryMapper)
+```
 
 ### WithDefaultFilters
 
@@ -90,14 +108,39 @@ By default, the indexing will happen on the _For this site_ folder for the site.
 
 This can be extended (or replaced) by:
 
-    WithPageFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
-    WithBlockFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
+```csharp
+WithPageFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
+WithBlockFilter(/* Filter(SiteCatalogItem item, IOperationContext context) */)
+```
 
 ### WithDefaultPageProvider
 
 **WithDefaultPageProvider** registers a default implementation for retrieving localized variants of the content. To customize this, register a custom _ISiteCatalogPageProvider_ implementation instead:
 
-    WithPageProvider(ISiteCatalogPageProvider pageProvider)
+```csharp
+WithPageProvider(ISiteCatalogPageProvider pageProvider)
+```
+
+### WithLanguageGroup
+
+Some scenarios require the sitemap files to be split up. A real-world scenario, where a single site definition is hosted for multiple hosts/domains, would benefit from splitting up the sitemap content.
+
+Taking the Alloy site as example, the same site could be hosted for `alloysite.com` in _English_ and `alloysite.se` in _Swedish_.
+
+This requires the following changes when adding the sitemap on startup: while still taking an array of all expected `languages`, call the method `WithLanguageGroup` and an array of one or more grouped languages. Give that group a meaningful name.
+
+```csharp
+var languages = new[] { "en", "sv" };
+
+app.ApplicationServices
+    .AddEmbeddedSitemapCatalog(SiteDefinition.Current, languages, catalog =>
+        catalog
+            .WithLanguageGroup(["en"], "sitemap-alloy-en")
+            .WithLanguageGroup(["sv"], "sitemap-alloy-se")
+            .WithDefaults());
+```
+
+> Don't forget to still call `WithDefaults()` or your own customizations.
 
 ## Exclude content
 
@@ -110,12 +153,13 @@ Content pages can also be the base for resolving dynamic content (inside or outs
 
 To add such dynamic content to the sitemap, create an implementation for **IDynamicContentRootProcessor**. 
 This extension point gives the opportunity per page object, to determine the custom processor can process:
-    
-    IAsyncEnumerable<DynamicContentProcessingResult?> ExpandForPageAsync(
-        ContentReference pageId,        // The page currently being processed.
-        ContentReference contentTypeId, // The content type of the page currently being processed.
-        string[] languages);            // The languages of the configured site catalog, currently being processed.
-    
+
+```csharp
+IAsyncEnumerable<DynamicContentProcessingResult?> ExpandForPageAsync(
+    ContentReference pageId,        // The page currently being processed.
+    ContentReference contentTypeId, // The content type of the page currently being processed.
+    string[] languages);            // The languages of the configured site catalog, currently being processed.
+```
 Tip: check if the processor can handle this combination as soon as possible. If not, quit the method as soon as possible.
 
 > **What should an _IDynamicContentRootProcessor_ implementation return?**
@@ -137,11 +181,13 @@ Tip: check if the processor can handle this combination as soon as possible. If 
 
 In case there is a need to have a different entry path than /sitemap.xml, configure the following app setting:
 
-      "Delaware": {
-        "Sitemaps":{
-            "SitemapEntryPath": "/sitemap.xml"
-        }
-      }
+```json
+"Delaware": {
+    "Sitemaps":{
+        "SitemapEntryPath": "/sitemap.xml"
+    }
+}
+```
 
 This would allow to validate and test the Embedded Sitemap next to an existing setup.
 
@@ -153,6 +199,6 @@ By default, enabling Sitemap registers **3 scheduled jobs**:
 * A **full indexing job with sitemap generation** which does the same as the above but adds generated sitemap.xml files on top. Enabled by default.
 * A **delta processing job** (for embedded Sitemap) which creates sitemap pages for updates since the last full indexing job ran. This job runs hourly by default.
 
-When adjusting the time interval for these jobs, make sure the interval for the delta job is smaller than the interval for the full indexing job.
+> When adjusting the time interval for these jobs, make sure the interval for the delta job is smaller than the interval for the full indexing job.
 
-When a **lot of content has changed** (e.g. due to a massive manual upload of a package), please **run the full job** manually to create clean sitemap pages.
+> When a **lot of content has changed** (e.g. due to a massive manual upload of a package), please **run the full job** manually to create clean sitemap pages.

@@ -62,15 +62,15 @@ public class EmbeddedClientSiteCatalogClient : IEmbeddedSiteCatalogClient
                 .ToArray();
     }
 
-    public SitemapState GetState(string forSiteName)
+    public SitemapStateV2 GetState(string forSiteName)
     {
         var existing =
             DynamicDataStoreFactory.Instance
-                .GetStore(typeof(SitemapState))
-                .Items<SitemapState>()
+                .GetStore(typeof(SitemapStateV2))
+                .Items<SitemapStateV2>()
                 .FirstOrDefault(i => i.SiteName == forSiteName);
 
-        return existing ?? new SitemapState { Id = Identity.NewIdentity(), SiteName = forSiteName };
+        return existing ?? new SitemapStateV2 { Id = Identity.NewIdentity(), SiteName = forSiteName };
     }
 
     public SiteCatalogEntry? GetEntry(IContent forContent)
@@ -92,11 +92,11 @@ public class EmbeddedClientSiteCatalogClient : IEmbeddedSiteCatalogClient
                 .Count(i => i.SiteName == forSiteName);
     }
 
-    public void SaveState(SitemapState state)
+    public void SaveState(SitemapStateV2 stateV2)
     {
         DynamicDataStoreFactory.Instance
-                .GetStore(typeof(SitemapState))
-                .Save(state);
+                .GetStore(typeof(SitemapStateV2))
+                .Save(stateV2);
     }
 
     #region Helper Methods
