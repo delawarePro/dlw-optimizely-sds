@@ -51,5 +51,7 @@ jobs:
                   prerelease: ${{ steps.conventions.outputs.prerelease }}
                   withPack: "true"
                   withRelease: ${{ steps.conventions.outputs.withRelease }}
+                  # Whether to allow dotnet publish and add it to pipeline artifacts.
+                  withPublish: true
                   nuGetSourceUrl: ${{ vars.PLATINA_NUGET_FEED_URL }}
                   nuGetAuthToken: ${{ secrets.PLATINA_FEED_TOKEN }}
