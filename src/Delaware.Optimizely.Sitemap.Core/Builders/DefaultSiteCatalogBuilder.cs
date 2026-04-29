@@ -8,6 +8,7 @@ using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
 
@@ -113,7 +114,8 @@ public class DefaultSiteCatalogBuilder(
         var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, application));
+        var logger = serviceProvider.GetRequiredService<ILogger<DefaultSiteCatalogBlockProvider>>();
+        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, application, logger));
 
         return this;
     }

@@ -1,6 +1,7 @@
 ﻿using EPiServer;
 using EPiServer.Applications;
 using EPiServer.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -10,13 +11,16 @@ namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, ISiteCatalogBlockProvider
 {
     private readonly InProcessWebsite _application;
+    private readonly ILogger<DefaultSiteCatalogBlockProvider> _logger;
 
     public DefaultSiteCatalogBlockProvider(
         IContentLoader contentLoader,
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
-        InProcessWebsite application) : base(contentLoader, contentLanguageSettingsHandler)
+        InProcessWebsite application,
+        ILogger<DefaultSiteCatalogBlockProvider> logger) : base(contentLoader, contentLanguageSettingsHandler)
     {
         _application = application;
+        _logger = logger;
     }
 
     public async Task<SiteCatalogItemsResult> GetBlocks(string? next, IOperationContext context)
@@ -39,11 +43,35 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
             .Take(take)
             .ToList();
 
-        var items = descendants.Any() ? ContentLoader
-                .GetItems(descendants, LanguageSelector.MasterLanguage())
-            : null;
+        IEnumerable<IContent>? items = null;
+        if (descendants.Any())
+        {
+            try
+            {
+                items = ContentLoader.GetItems(descendants, LanguageSelector.MasterLanguage());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "GetItems failed for batch, falling back to per-item loading to skip ghost items.");
+                items = descendants
+                    .Select(reference =>
+                    {
+                        try
+                        {
+                            return ContentLoader.Get<IContent>(reference, LanguageSelector.MasterLanguage());
+                        }
+                        catch (Exception itemEx)
+                        {
+                            _logger.LogWarning(itemEx, "Skipping ghost or unresolvable content reference {ContentReference}.", reference);
+                            return null;
+                        }
+                    })
+                    .Where(x => x != null)
+                    .Select(x => x!);
+            }
+        }
 
-        var pages = items != null
+        var blocks = items != null
             ? await GetContent(items.ToArray())
             : null;
 
@@ -51,7 +79,7 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
         // If there are no more results, we're at the end.
         skip = descendants.Any() ? (skip ?? 0) + descendants.Count : null;
 
-        return new SiteCatalogItemsResult(pages, skip?.ToString());
+        return new SiteCatalogItemsResult(blocks, skip?.ToString());
     }
 
     public IList<int> GetBlockRoots()
