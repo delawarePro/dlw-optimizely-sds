@@ -4,6 +4,7 @@ using Delaware.Optimizely.Sitemap.Shared;
 using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using EPiServer.Core;
+using EPiServer.DataAbstraction;
 
 namespace Delaware.Optimizely.Sitemap.SitemapXml;
 
@@ -126,12 +127,21 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
     {
         if (resource is DefaultSiteResource defaultSiteResource)
         {
-            var settings =
-                _contentLanguageSettingsHandler.Get(defaultSiteResource.SourceId);
+            IEnumerable<ContentLanguageSetting>? settings;
+
+            try
+            {
+                settings = _contentLanguageSettingsHandler.Get(defaultSiteResource.SourceId);
+            }
+            catch (ContentNotFoundException)
+            {
+                // Ghost content or content with 0 language branches will throw here.
+                yield break;
+            }
 
             foreach (var contentLanguageSetting in settings.Where(cl => cl.LanguageBranch.Equals(language)))
             {
-                foreach (string s in contentLanguageSetting.LanguageBranchFallback)
+                foreach (var s in contentLanguageSetting.LanguageBranchFallback)
                 {
                     yield return s;
                 }
