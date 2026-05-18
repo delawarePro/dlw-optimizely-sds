@@ -1,4 +1,4 @@
-﻿using EPiServer.Web;
+﻿using EPiServer.Applications;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
@@ -25,14 +25,15 @@ public class SiteCatalogsBuilder : ISiteCatalogsBuilder
     public SiteCatalogDirectory Build()
     {
         var directory = new SiteCatalogDirectory(_serviceProvider);
-        var siteDefinitionRepo = _serviceProvider.GetRequiredService<ISiteDefinitionRepository>();
+        var applicationRepo = _serviceProvider.GetRequiredService<IApplicationRepository>();
 
         foreach (var x in _siteCatalogBuilders)
         {
             // Translate key (site name) to a site definition.
-            var siteDefinition = siteDefinitionRepo.Get(x.Key);
+            var application = applicationRepo.Get<InProcessWebsite>(x.Key);
 
-            directory.AddSiteCatalog(siteDefinition, x.Value);
+            if(application != null)
+                directory.AddSiteCatalog(application, x.Value);
         }
 
         return directory;

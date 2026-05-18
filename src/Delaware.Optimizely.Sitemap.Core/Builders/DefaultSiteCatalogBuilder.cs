@@ -4,11 +4,9 @@ using Delaware.Optimizely.Sitemap.Core.Publishing.Filters;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
 using Delaware.Optimizely.Sitemap.Shared.Models;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
-using EPiServer.Data.Entity;
-using EPiServer.Web;
-using EPiServer.Web.Mvc.Html.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
@@ -17,11 +15,11 @@ namespace Delaware.Optimizely.Sitemap.Core.Builders;
 /// Default implementation for <see cref="ISiteCatalogBuilder"/>.
 /// </summary>
 /// <param name="serviceProvider"></param>
-/// <param name="siteDefinition"></param>
+/// <param name="application"></param>
 /// <param name="languages"></param>
 public class DefaultSiteCatalogBuilder(
     IServiceProvider serviceProvider,
-    SiteDefinition siteDefinition,
+    InProcessWebsite application,
     string[]? languages) : ISiteCatalogBuilder
 {
     public const string DefaultLanguageGroupName = "Default";
@@ -115,7 +113,7 @@ public class DefaultSiteCatalogBuilder(
         var contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, siteDefinition));
+        _blockReferencesProviders.Add(new DefaultSiteCatalogBlockProvider(contentLoader, contentLanguageSettingsHandler, application));
 
         return this;
     }
@@ -183,19 +181,19 @@ public class DefaultSiteCatalogBuilder(
     /// <exception cref="NullReferenceException">Thrown if no page provider or default entry mapper is registered for the site catalog.</exception>
     public ISiteCatalog Build()
     {
-        var pageProvider = PageProvider ?? throw new NullReferenceException($"No page provider registered for '{siteDefinition.Name}' site catalog.");
-        var defaultMapper = DefaultEntryMapper ?? throw new NullReferenceException($"No default mapping provided for '{siteDefinition.Name}' site catalog.");
+        var pageProvider = PageProvider ?? throw new NullReferenceException($"No page provider registered for '{application.Name}' site catalog.");
+        var defaultMapper = DefaultEntryMapper ?? throw new NullReferenceException($"No default mapping provided for '{application.Name}' site catalog.");
 
         if (languages == null || !languages.Any())
         {
-            throw new ArgumentException($"Specify one or more languages for site catalog {siteDefinition.Name}.");
+            throw new ArgumentException($"Specify one or more languages for site catalog {application.Name}.");
         }
 
         // If there are language groups configured, use those.
         // Otherwise, create a 'Default' language group containing all languages for site.
         var languageGroups = DetermineLanguageGroups(languages, _languageGroups);
 
-        return new SiteCatalog(siteDefinition, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
+        return new SiteCatalog(application, pageProvider, defaultMapper, _pageFilters, _blockFilters, _blockReferencesProviders)
         {
             LanguageGroups = (IReadOnlyCollection<SitemapLanguageGroup>)languageGroups
         };

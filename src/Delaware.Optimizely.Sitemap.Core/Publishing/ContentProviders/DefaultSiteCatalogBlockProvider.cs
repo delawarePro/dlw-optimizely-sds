@@ -1,6 +1,6 @@
 ﻿using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
-using EPiServer.Web;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
@@ -9,14 +9,14 @@ namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 /// </summary>
 public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, ISiteCatalogBlockProvider
 {
-    private readonly SiteDefinition _siteDefinition;
+    private readonly InProcessWebsite _application;
 
     public DefaultSiteCatalogBlockProvider(
         IContentLoader contentLoader,
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
-        SiteDefinition siteDefinition) : base(contentLoader, contentLanguageSettingsHandler)
+        InProcessWebsite application) : base(contentLoader, contentLanguageSettingsHandler)
     {
-        _siteDefinition = siteDefinition;
+        _application = application;
     }
 
     public async Task<SiteCatalogItemsResult> GetBlocks(string? next, IOperationContext context)
@@ -30,7 +30,8 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
         }
 
         var take = context.BatchSizeHint ?? DefaultBatchSize;
-        var forThisSiteBlockFolder = _siteDefinition.SiteAssetsRoot;
+        var forThisSiteBlockFolder = _application.AssetsRoot;
+
         var allDescendants = ContentLoader.GetDescendents(forThisSiteBlockFolder);
 
         var descendants = allDescendants
@@ -55,6 +56,8 @@ public class DefaultSiteCatalogBlockProvider : SiteCatalogContentProviderBase, I
 
     public IList<int> GetBlockRoots()
     {
-        return new List<int>(1) { _siteDefinition.SiteAssetsRoot.ID };
+        return _application.AssetsRoot != null 
+            ? [_application.AssetsRoot.ID] 
+            : [];
     }
 }

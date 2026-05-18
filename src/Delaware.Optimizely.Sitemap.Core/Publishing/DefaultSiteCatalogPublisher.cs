@@ -1,9 +1,8 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Builders;
 using Delaware.Optimizely.Sitemap.Core.Client;
-using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
-using EPiServer.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing;
@@ -11,8 +10,8 @@ namespace Delaware.Optimizely.Sitemap.Core.Publishing;
 public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
 {
     private readonly ISiteCatalogClient _siteCatalogClient;
-    private readonly ISiteDefinitionRepository _siteDefinitionRepository;
-    private readonly ISiteDefinitionResolver _siteDefinitionResolver;
+    private readonly IApplicationRepository _applicationRepository;
+    private readonly IApplicationResolver _applicationResolver;
     private readonly IContentLoader _contentLoader;
     private readonly ILogger _logger;
 
@@ -21,16 +20,16 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
     public DefaultSiteCatalogPublisher(
         SiteCatalogDirectory siteCatalogs,
         ISiteCatalogClient siteCatalogClient,
-        ISiteDefinitionRepository siteDefinitionRepository,
-        ISiteDefinitionResolver siteDefinitionResolver,
+        IApplicationRepository applicationRepository,
+        IApplicationResolver applicationResolver,
         IContentLoader contentLoader,
         ILoggerFactory loggerFactory)
     {
         SiteCatalogs = siteCatalogs;
 
         _siteCatalogClient = siteCatalogClient;
-        _siteDefinitionRepository = siteDefinitionRepository;
-        _siteDefinitionResolver = siteDefinitionResolver;
+        _applicationRepository = applicationRepository;
+        _applicationResolver = applicationResolver;
         _contentLoader = contentLoader;
         _logger = loggerFactory.CreateLogger<DefaultSiteCatalogPublisher>();
     }
@@ -39,18 +38,18 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
     {
         if (siteCatalog == null || string.IsNullOrWhiteSpace(siteCatalog.SiteId))
         {
-            context.Logger.LogWarning($"'{nameof(Publish)}' ignored. No site catalog provided");
+            context.Logger.LogWarning("'{Publish}' ignored. No site catalog provided", nameof(Publish));
             return Task.CompletedTask;
         }
 
-        var siteDefinition = _siteDefinitionRepository.Get(siteCatalog.SiteId);
-        if (siteDefinition == null)
+        var application = _applicationRepository.Get<InProcessWebsite>(siteCatalog.SiteId);
+        if (application == null)
         {
-            context.Logger.LogWarning($"Could not find site definition for sites '{siteCatalog.SiteId}'.");
+            context.Logger.LogWarning("Could not find application for site '{siteId}'.", siteCatalog.SiteId);
             return Task.CompletedTask;
         }
 
-        return DoPublish(siteCatalog, siteDefinition, context);
+        return DoPublish(siteCatalog, application, context);
     }
 
     public virtual async Task Publish(
@@ -65,40 +64,32 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
         {
             if (items.Key == null)
             {
-                _logger
-                    .LogWarning($"Couldn't determine site definition for content with ID " +
-                      $"{string.Join(',', items.Select(c => c.ContentLink.ID))}");
+                _logger.LogWarning("Couldn't determine application for content with ID {ContentIds}", string.Join(',', items.Select(c => c.ContentLink.ID)));
 
                 continue;
             }
 
-            using (new SiteContextSwitcher(items.Key))
-            {
-                var entries = await siteCatalog.GetEntries(context, items.ToArray());
+            var entries = await siteCatalog.GetEntries(context, [.. items]);
 
-                _siteCatalogClient.UpdateCatalog(siteCatalog.SiteId, entries);
-            }
+            _siteCatalogClient.UpdateCatalog(siteCatalog.SiteId, entries);
         }
     }
 
-    protected virtual async Task DoPublish(ISiteCatalog siteCatalog, SiteDefinition siteDefinition, IOperationContext context)
+    protected virtual async Task DoPublish(ISiteCatalog siteCatalog, InProcessWebsite application, IOperationContext context)
     {
-        using (new SiteContextSwitcher(siteDefinition))
-        {
-            var rootPage = siteDefinition.StartPage;
+        var rootPage = application.EntryPoint;
 
-            _logger.LogInformation($"Publishing pages for site {siteDefinition.Name} to sitemap catalog.");
+        _logger.LogInformation("Publishing pages for site {site} to sitemap catalog.", application.DisplayName);
 
-            // Pages.
-            await DoPublish(siteCatalog, rootPage, context,
-                (root, ctx, next) => siteCatalog.GetPageEntries(context, root, next));
+        // Pages.
+        await DoPublish(siteCatalog, rootPage, context,
+            (root, ctx, next) => siteCatalog.GetPageEntries(context, root, next));
 
-            _logger.LogInformation($"Publishing blocks for site {siteDefinition.Name} to sitemap catalog.");
+        _logger.LogInformation("Publishing blocks for site {site} to sitemap catalog.", application.DisplayName);
 
-            // Blocks.
-            await DoPublish(siteCatalog, rootPage, context,
-                (root, ctx, next) => siteCatalog.GetBlockEntries(context, next));
-        }
+        // Blocks.
+        await DoPublish(siteCatalog, rootPage, context,
+            (root, ctx, next) => siteCatalog.GetBlockEntries(context, next));
     }
 
     protected virtual async Task DoPublish(
@@ -128,17 +119,17 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
 
     #region Helper Methods
 
-    private List<IGrouping<SiteDefinition?, IContent>> GroupContentPerSite(IEnumerable<IContent> contentItems)
+    private List<IGrouping<Application?, IContent>> GroupContentPerSite(IEnumerable<IContent> contentItems)
     {
-        var intermediateResult = new List<KeyValuePair<SiteDefinition?, IContent>>();
+        var intermediateResult = new List<KeyValuePair<Application?, IContent>>();
 
         foreach (var contentItem in contentItems)
         {
             if (contentItem is PageData)
             {
                 // Pages map to 1 (or 0, if outside a site tree...) site definitions, not more.
-                var sd = _siteDefinitionResolver.GetByContent(contentItem.ContentLink, true);
-                intermediateResult.Add(new KeyValuePair<SiteDefinition?, IContent>(sd, contentItem));
+                var app = _applicationResolver.GetByContent(contentItem.ContentLink, true);
+                intermediateResult.Add(new KeyValuePair<Application?, IContent>(app, contentItem));
             }
 
             if (contentItem is BlockData)
@@ -146,9 +137,9 @@ public class DefaultSiteCatalogPublisher : ISiteCatalogPublisher
                 // Blocks can be used by 0 or multiple sites.
                 if (SiteCatalogs.TryGetSiteUsages(contentItem, out var bySites))
                 {
-                    foreach (var siteDefinition in bySites)
+                    foreach (var application in bySites)
                     {
-                        intermediateResult.Add(new KeyValuePair<SiteDefinition?, IContent>(siteDefinition, contentItem));
+                        intermediateResult.Add(new KeyValuePair<Application?, IContent>(application, contentItem));
                     }
                 }
             }

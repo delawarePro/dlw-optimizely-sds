@@ -5,15 +5,15 @@ using EPiServer.Events;
 namespace Delaware.Optimizely.Sitemap.Core.Events;
 
 [DataContract]
-[EventsServiceKnownType]
-public sealed class PublishSiteCatalogRequest
+[EventData("059399ef-cb1e-4409-a908-d88a6916bb3c", Broadcast = true)]
+public sealed class PublishSiteCatalogRequestEvent : IEventData
 {
-    public PublishSiteCatalogRequest(string siteId)
+    public PublishSiteCatalogRequestEvent(string siteId)
     {
         SiteId = siteId;
     }
 
-    public PublishSiteCatalogRequest(ISiteCatalog siteCatalog)
+    public PublishSiteCatalogRequestEvent(ISiteCatalog siteCatalog)
     {
         SiteCatalog = siteCatalog;
         SiteId = siteCatalog.SiteId;
@@ -26,18 +26,4 @@ public sealed class PublishSiteCatalogRequest
     // Remove in a future release.
     [IgnoreDataMember]
     public ISiteCatalog? SiteCatalog { get; set; }
-}
-
-[DataContract]
-[EventsServiceKnownType]
-public class PublishSiteCatalogResponse
-{
-    public PublishSiteCatalogResponse(ISiteCatalog siteCatalog)
-    {
-        SiteCatalog = siteCatalog;
-    }
-
-    public ISiteCatalog SiteCatalog { get; set; }
-
-    public bool Success { get; set; }
 }

@@ -1,6 +1,7 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Client;
 using Delaware.Optimizely.Sitemap.Core.Extensions;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
@@ -21,7 +22,7 @@ public abstract class AbstractSiteCatalogEntryMapper : ISiteCatalogEntryMapper
         SiteCatalogEntryKeyResolver = siteCatalogEntryKeyResolver;
     }
 
-    public SiteCatalogEntry Map(string siteName, SiteCatalogItem item, IOperationContext context)
+    public SiteCatalogEntry Map(string siteName, SiteCatalogItem item, InProcessWebsite application, IOperationContext context)
     {
         var key = CreateKey(siteName, item.Content, context);
         var entry = new SiteCatalogEntry(key, siteName);
@@ -29,7 +30,7 @@ public abstract class AbstractSiteCatalogEntryMapper : ISiteCatalogEntryMapper
         if (ShouldArchive(item.Content, context))
             entry.Archived = DateTime.UtcNow;
 
-        Map(item, entry, context);
+        Map(item, entry, application, context);
 
         if (!item.Localized.Any())
         {
@@ -49,7 +50,7 @@ public abstract class AbstractSiteCatalogEntryMapper : ISiteCatalogEntryMapper
 
         foreach (var (locale, localizedContent) in item.Localized)
         {
-            var localizedEntry = Map(locale, localizedContent, context);
+            var localizedEntry = Map(locale, localizedContent, application, context);
 
             if (localizedEntry.Url == null)
             {
@@ -63,21 +64,21 @@ public abstract class AbstractSiteCatalogEntryMapper : ISiteCatalogEntryMapper
         return entry;
     }
 
-    protected virtual LocalizedSiteCatalogEntry Map(string locale, IContent content, IOperationContext context)
+    protected virtual LocalizedSiteCatalogEntry Map(string locale, IContent content, InProcessWebsite application, IOperationContext context)
     {
         var localizedEntry = new LocalizedSiteCatalogEntry();
 
         if (ShouldArchive(content, context))
             localizedEntry.Archived = DateTime.UtcNow;
 
-        Map(locale, content, localizedEntry, context);
+        Map(locale, content, localizedEntry, application, context);
 
         return localizedEntry;
     }
 
-    protected abstract void Map(SiteCatalogItem item, SiteCatalogEntry entry, IOperationContext context);
+    protected abstract void Map(SiteCatalogItem item, SiteCatalogEntry entry, InProcessWebsite application, IOperationContext context);
 
-    protected abstract void Map(string locale, IContent content, LocalizedSiteCatalogEntry entry, IOperationContext context);
+    protected abstract void Map(string locale, IContent content, LocalizedSiteCatalogEntry entry, InProcessWebsite application, IOperationContext context);
 
     protected virtual bool ShouldArchive(IContent content, IOperationContext context)
     {

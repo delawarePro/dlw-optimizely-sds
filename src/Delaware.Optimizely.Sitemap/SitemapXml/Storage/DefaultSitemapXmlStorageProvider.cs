@@ -1,6 +1,7 @@
 ﻿using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.SitemapXml.Models;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.DataAbstraction;
 using EPiServer.DataAccess;
@@ -29,13 +30,13 @@ public class DefaultSitemapXmlStorageProvider(
     private ContentType? _sitemapMediaContentType;
 
     public string Store(
-        SiteDefinition siteDefinition,
+        InProcessWebsite application,
         SitemapLanguageGroup languageGroup,
         Stream inputStream,
         int pageNumber,
         bool isDelta)
     {
-        EnsureInitialized(siteDefinition, languageGroup, out var target);
+        EnsureInitialized(application, languageGroup, out var target);
 
         var urlSegment = $"{(isDelta ? "D" : string.Empty)}{pageNumber}";
         var existing = contentRepository.GetBySegment(target, urlSegment, LanguageSelector.MasterLanguage());
@@ -69,31 +70,31 @@ public class DefaultSitemapXmlStorageProvider(
     }
 
     private void EnsureInitialized(
-        SiteDefinition siteDefinition,
+        InProcessWebsite application,
         SitemapLanguageGroup languageGroup,
         out ContentReference mostSpecificFolder)
     {
         var loaderOptions = LanguageSelector.MasterLanguage();
         ContentReference? languageGroupFolderContentReference = null;
-
+        
         // Ensure sitemap root folder.
-        var sitemapRoot = contentRepository.GetBySegment(siteDefinition.GlobalAssetsRoot, "sitemaps", loaderOptions) as ContentFolder;
+        var sitemapRoot = contentRepository.GetBySegment(SystemDefinition.Current.GlobalAssetsRoot, "sitemaps", loaderOptions) as ContentFolder;
         ContentReference? sitemapRootForSite = null;
         if (sitemapRoot == null)
         {
-            sitemapRoot = contentRepository.GetDefault<ContentFolder>(siteDefinition.GlobalAssetsRoot);
+            sitemapRoot = contentRepository.GetDefault<ContentFolder>(SystemDefinition.Current.GlobalAssetsRoot);
             sitemapRoot.Name = "sitemaps";
 
             contentRepository.Save(sitemapRoot, SaveAction.Publish, AccessLevel.NoAccess);
         }
 
         // Ensure folder for this site's sitemap files.
-        var sitemapFolderForSite = contentRepository.GetBySegment(sitemapRoot.ContentLink, siteDefinition.Name, loaderOptions) as ContentFolder;
+        var sitemapFolderForSite = contentRepository.GetBySegment(sitemapRoot.ContentLink, application.Name, loaderOptions) as ContentFolder;
 
         if (sitemapFolderForSite == null)
         {
             sitemapFolderForSite = contentRepository.GetDefault<ContentFolder>(sitemapRoot.ContentLink);
-            sitemapFolderForSite.Name = siteDefinition.Name;
+            sitemapFolderForSite.Name = application.Name;
 
             sitemapRootForSite = contentRepository.Save(sitemapFolderForSite, SaveAction.Publish, AccessLevel.NoAccess);
         }

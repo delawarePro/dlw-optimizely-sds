@@ -5,13 +5,12 @@ using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.Shared;
 using Delaware.Optimizely.Sitemap.SitemapXml;
 using EPiServer.DataAbstraction;
-using EPiServer.PlugIn;
 using EPiServer.Scheduler;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Jobs;
 
-[ScheduledPlugIn(
+[ScheduledJob(
     GUID = JobId,
     DisplayName = "[delaware sitemaps] Delta process site catalogs and create delta-sitemap XML files",
     IntervalType = ScheduledIntervalType.Hours,

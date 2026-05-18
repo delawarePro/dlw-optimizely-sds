@@ -1,6 +1,6 @@
 ﻿using Delaware.Optimizely.Sitemap.Shared.Models;
+using EPiServer.Applications;
 using EPiServer.Core;
-using EPiServer.Web;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing;
 
@@ -8,7 +8,7 @@ public interface ISiteCatalog
 {
     string SiteId { get; }
 
-    SiteDefinition SiteDefinition { get; }
+    InProcessWebsite Application { get; }
 
     IReadOnlyCollection<SitemapLanguageGroup> LanguageGroups { get; }
 

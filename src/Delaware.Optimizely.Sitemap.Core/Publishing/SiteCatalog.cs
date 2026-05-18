@@ -3,13 +3,13 @@ using Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
 using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
+using EPiServer.Applications;
 using EPiServer.Core;
-using EPiServer.Web;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing;
 
 public class SiteCatalog(
-    SiteDefinition siteDefinition,
+    InProcessWebsite application,
     ISiteCatalogPageProvider pageProvider,
     ISiteCatalogEntryMapper defaultMapper,
     ICollection<ISiteCatalogFilter> pageFilters,
@@ -17,9 +17,9 @@ public class SiteCatalog(
     IList<ISiteCatalogBlockProvider> blockReferencesProviders)
     : ISiteCatalog
 {
-    public string SiteId => SiteDefinition.Name;
+    public string SiteId => Application.Name;
 
-    public SiteDefinition SiteDefinition { get; } = siteDefinition;
+    public InProcessWebsite Application { get; } = application;
 
     public IReadOnlyCollection<SitemapLanguageGroup> LanguageGroups { get; set; } = new List<SitemapLanguageGroup>();
 
@@ -144,7 +144,7 @@ public class SiteCatalog(
     {
         return contentItems
             .EmptyWhenNull()
-            .Select(x => defaultMapper.Map(SiteId, x, context))
+            .Select(x => defaultMapper.Map(SiteId, x, Application, context))
             // Exclude items which have no URLs.
             .Where(x => x is { Localized: not null } && x.Localized.Any(l => !string.IsNullOrWhiteSpace(l.Value.Url)))
             .Select(x => x!)

@@ -6,7 +6,6 @@ using Delaware.Optimizely.Sitemap.Core.Client;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.Middleware;
 using Delaware.Optimizely.Sitemap.Shared.Models;
-using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using Delaware.Optimizely.Sitemap.SitemapXml.Storage;
 using Microsoft.Extensions.Logging;
@@ -31,29 +30,25 @@ internal class DefaultSitemapGeneratorService(
 
         if (updates is { Count: > 0 })
         {
-            using (new SiteContextSwitcher(siteCatalog.SiteDefinition))
+            foreach (var languageGroup in siteCatalog.LanguageGroups)
             {
+                var storedPageCount = state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroup.Key, out var deltaPagesCurrentLanguageGroup)
+                    ? new StoredPageCount(deltaPagesCurrentLanguageGroup.Count)
+                    : new StoredPageCount(0);
 
-                foreach (var languageGroup in siteCatalog.LanguageGroups)
+                var currentDelta = storedPageCount.Value;
+
+                var sitemapXmlPageUrls =
+                    await DoGenerateAndPersistAsync(siteCatalog, languageGroup, updates, storedPageCount, true) ?? [];
+
+                foreach (var sitemapXmlPageUrl in sitemapXmlPageUrls)
                 {
-                    var storedPageCount = state.DeltaPagesPerLanguageGroup.TryGetValue(languageGroup.Key, out var deltaPagesCurrentLanguageGroup)
-                        ? new StoredPageCount(deltaPagesCurrentLanguageGroup.Count)
-                        : new StoredPageCount(0);
-
-                    var currentDelta = storedPageCount.Value;
-
-                    var sitemapXmlPageUrls =
-                        await DoGenerateAndPersistAsync(siteCatalog, languageGroup, updates, storedPageCount, true) ?? [];
-
-                    foreach (var sitemapXmlPageUrl in sitemapXmlPageUrls)
+                    if (!state.DeltaPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
                     {
-                        if (!state.DeltaPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
-                        {
-                            state.DeltaPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
-                        }
-
-                        state.DeltaPagesPerLanguageGroup[languageGroup.Key][currentDelta++] = sitemapXmlPageUrl;
+                        state.DeltaPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
                     }
+
+                    state.DeltaPagesPerLanguageGroup[languageGroup.Key][currentDelta++] = sitemapXmlPageUrl;
                 }
             }
         }
@@ -66,71 +61,68 @@ internal class DefaultSitemapGeneratorService(
 
     public async Task<SitemapStateV2?> GenerateAndPersistAsync(IOperationContext context, ISiteCatalog siteCatalog)
     {
-        using (new SiteContextSwitcher(siteCatalog.SiteDefinition))
+        var siteName = siteCatalog.SiteId;
+        var entryCountForSite = embeddedSiteCatalogClient.GetCatalogEntryCount(siteName);
+
+        var state = embeddedSiteCatalogClient.GetState(siteName);
+
+        state.FullPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>();
+
+        context.Logger.LogInformation("Generating sitemap XML for {site} and language groups {languageGroups}", siteName, siteCatalog.LanguageGroups.Select(lg => lg.Key));
+
+        foreach (var languageGroup in siteCatalog.LanguageGroups)
         {
-            var siteName = siteCatalog.SiteId;
-            var entryCountForSite = embeddedSiteCatalogClient.GetCatalogEntryCount(siteName);
-           
-            var state = embeddedSiteCatalogClient.GetState(siteName);
+            var storedPageCount = new StoredPageCount(0);
 
-            state.FullPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>();
+            var processedCount = 0;
+            var currentEntryBatch = 0;
+            var sitemapPageCount = 0;
 
-            context.Logger.LogInformation("Generating sitemap XML for {site} and language groups {languageGroups}", siteName, siteCatalog.LanguageGroups.Select(lg => lg.Key));
-            
-            foreach (var languageGroup in siteCatalog.LanguageGroups)    
+            while (processedCount < entryCountForSite)
             {
-                var storedPageCount = new StoredPageCount(0);
+                var entries = embeddedSiteCatalogClient.GetCatalog(siteName, currentEntryBatch, options.Value.UrlCountPerSitemapPage);
 
-                var processedCount = 0;
-                var currentEntryBatch = 0;
-                var sitemapPageCount = 0;
+                if (entries is not { Count: > 0 }) break;
 
-                while (processedCount < entryCountForSite)
+                var sitemapPageUrlsPerLanguageGroup =
+                    await DoGenerateAndPersistAsync(siteCatalog, languageGroup, entries, storedPageCount, false) ?? [];
+
+                foreach (var sitemapXmlPageUrl in sitemapPageUrlsPerLanguageGroup)
                 {
-                    var entries = embeddedSiteCatalogClient.GetCatalog(siteName, currentEntryBatch, options.Value.UrlCountPerSitemapPage);
-
-                    if (entries is not { Count: > 0 }) break;
-
-                    var sitemapPageUrlsPerLanguageGroup =
-                        await DoGenerateAndPersistAsync(siteCatalog, languageGroup, entries, storedPageCount, false) ?? [];
-
-                    foreach (var sitemapXmlPageUrl in sitemapPageUrlsPerLanguageGroup)
+                    if (!state.FullPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
                     {
-                        if (!state.FullPagesPerLanguageGroup.ContainsKey(languageGroup.Key))
-                        {
-                            state.FullPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
-                        }
-
-                        context?.Logger.LogInformation(">>> {siteCatalog} - {languageGroupKey} - {sitemapXmlPageUrl}", siteCatalog.SiteId, languageGroup.Key, sitemapXmlPageUrl);
-                        state.FullPagesPerLanguageGroup[languageGroup.Key][sitemapPageCount++] = sitemapXmlPageUrl;
+                        state.FullPagesPerLanguageGroup[languageGroup.Key] = new Dictionary<int, string>();
                     }
 
-                    processedCount += entries.Count;
-                    currentEntryBatch = ++currentEntryBatch;
+                    context?.Logger.LogInformation(">>> {siteCatalog} - {languageGroupKey} - {sitemapXmlPageUrl}", siteCatalog.SiteId, languageGroup.Key, sitemapXmlPageUrl);
+                    state.FullPagesPerLanguageGroup[languageGroup.Key][sitemapPageCount++] = sitemapXmlPageUrl;
                 }
+
+                processedCount += entries.Count;
+                currentEntryBatch = ++currentEntryBatch;
             }
-
-            state.LastDeltaGenerationUtc = null;
-            state.LastFullGenerationUtc = DateTime.UtcNow;
-            state.DeltaPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>(0);
-
-            string stateAsString;
-            try
-            {
-                stateAsString = JsonSerializer.Serialize(state);
-            }
-            catch(Exception ex)
-            {
-                context?.Logger?.LogError(ex, "Failed to serialize sitemap state for {siteCatalog.SiteId} - {Error}", siteCatalog.SiteId, ex);
-                stateAsString = "[corrupt]";
-            }
-
-            context?.Logger?.LogInformation("Saving state for {siteCatalog.SiteId}: {stateAsString}", siteCatalog.SiteId, stateAsString);
-
-            embeddedSiteCatalogClient.SaveState(state);
-
-            return state;
         }
+
+        state.LastDeltaGenerationUtc = null;
+        state.LastFullGenerationUtc = DateTime.UtcNow;
+        state.DeltaPagesPerLanguageGroup = new Dictionary<string, IDictionary<int, string>>(0);
+
+        string stateAsString;
+        try
+        {
+            stateAsString = JsonSerializer.Serialize(state);
+        }
+        catch(Exception ex)
+        {
+            context?.Logger?.LogError(ex, "Failed to serialize sitemap state for {siteCatalog.SiteId} - {Error}", siteCatalog.SiteId, ex);
+            stateAsString = "[corrupt]";
+        }
+
+        context?.Logger?.LogInformation("Saving state for {siteCatalog.SiteId}: {stateAsString}", siteCatalog.SiteId, stateAsString);
+
+        embeddedSiteCatalogClient.SaveState(state);
+
+        return state;
     }
 
     private async Task<IReadOnlyCollection<string>?> DoGenerateAndPersistAsync(
@@ -187,7 +179,7 @@ internal class DefaultSitemapGeneratorService(
             // Reset the stream position.
             memory.Seek(0, SeekOrigin.Begin);
 
-            storedLocations.Add(sitemapXmlStorageProvider.Store(catalog.SiteDefinition, languageGroup, memory, storedPageCount.Value++, isDelta));
+            storedLocations.Add(sitemapXmlStorageProvider.Store(catalog.Application, languageGroup, memory, storedPageCount.Value++, isDelta));
 
             storedCount += batch.Count();
         }

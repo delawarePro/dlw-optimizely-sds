@@ -1,16 +1,15 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Builders;
-using Delaware.Optimizely.Sitemap.Core.Events;
 using Delaware.Optimizely.Sitemap.Core.Jobs;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.SitemapXml;
 using EPiServer.DataAbstraction;
-using EPiServer.PlugIn;
+using EPiServer.Scheduler;
 using EPiServer.ServiceLocation;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Jobs;
 
-[ScheduledPlugIn(
+[ScheduledJob(
     GUID = JobId,
     DisplayName = "[delaware sitemap] Fully process site catalogs and create sitemap XML files",
     IntervalType = ScheduledIntervalType.Days,
@@ -20,18 +19,18 @@ public class FullSiteCatalogWithSitemapGenerationJob(
     ILoggerFactory loggerFactory,
     IBackgroundContextFactory backgroundContextFactory,
     ISitemapGeneratorService sitemapGeneratorService,
-    SiteCatalogEventHandler? siteCatalogEventHandler = null,
+    ISiteCatalogPublisher? siteCatalogPublisher = null,
     SiteCatalogDirectory? siteCatalogDirectory = null)
-    : FullSiteCatalogJob(backgroundContextFactory, loggerFactory, siteCatalogEventHandler, siteCatalogDirectory)
+    : FullSiteCatalogJob(backgroundContextFactory, loggerFactory, siteCatalogPublisher, siteCatalogDirectory)
 {
     public new const string JobId = "{08E2879D-1903-44AF-913C-0D967BFFFF68}";
 
     protected override async Task OnSiteCatalogPublishedAsync(ISiteCatalog siteCatalog)
     {
-        Logger.LogInformation($"Generating sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
+        Logger.LogInformation("Generating sitemap for site catalog '{SiteId}'.", siteCatalog.SiteId);
 
         await sitemapGeneratorService.GenerateAndPersistAsync(new OperationContext(logger: Logger), siteCatalog);
 
-        Logger.LogInformation($"Generated sitemap for site catalog '{siteCatalog.SiteDefinition.Name}'.");
+        Logger.LogInformation("Generated sitemap for site catalog '{SiteId}'.", siteCatalog.SiteId);
     }
 }

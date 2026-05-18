@@ -1,10 +1,9 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Builders;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Events;
-using EPiServer.Events.Clients;
-using EPiServer.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Events
@@ -12,25 +11,15 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
     public class SiteCatalogEventHandler(
         IContentEvents contentEvents,
         IContentLoader contentLoader,
-        IEventRegistry eventRegistry,
+        IEventPublisher eventPublisher,
         ISiteCatalogPublisher siteCatalogPublisher,
-        ISiteDefinitionResolver siteDefinitionResolver,
+        IApplicationResolver applicationResolver,
         SiteCatalogDirectory siteCatalogDirectory,
         ILoggerFactory loggerFactory)
     {
         private static readonly string OriginalUrlSegmentToken = "PreviousUrlSegment";
 
-        public static readonly Guid PublishSiteCatalogEventId = new("{059399EF-CB1E-4409-A908-D88A6916BB3C}");
-        public static readonly Guid UpdatedSiteCatalogEventId = new("{E8BEB0EF-0E15-4199-ACA3-D9A500738395}");
-
         private readonly ILogger _logger = loggerFactory.CreateLogger<SiteCatalogEventHandler>();
-
-        public virtual void PublishSiteCatalog(ISiteCatalog siteCatalog)
-        {
-            eventRegistry
-                .Get(PublishSiteCatalogEventId)
-                .Raise(PublishSiteCatalogEventId, new PublishSiteCatalogRequest(siteCatalog.SiteId));
-        }
 
         public virtual void Initialize()
         {
@@ -38,7 +27,6 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
             contentEvents.PublishedContent += new EventHandler<ContentEventArgs>(async (s, e) => await PublishedContent(s, e));
             contentEvents.MovingContent += new EventHandler<ContentEventArgs>(async (s, e) => await MovingContent(s, e));
             contentEvents.MovedContent += new EventHandler<ContentEventArgs>(async (s, e) => await MovedContent(s, e));
-            eventRegistry.Get(PublishSiteCatalogEventId).Raised += new EventNotificationHandler(new EventHandler<EventNotificationEventArgs>(async (s, e) => await OnPublishSiteCatalogEvent(s, e)));
         }
 
         public virtual void Uninitialize()
@@ -47,41 +35,7 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
             contentEvents.PublishedContent -= new EventHandler<ContentEventArgs>(async (s, e) => await PublishedContent(s, e));
             contentEvents.MovingContent -= new EventHandler<ContentEventArgs>(async (s, e) => await MovingContent(s, e));
             contentEvents.MovedContent -= new EventHandler<ContentEventArgs>(async (s, e) => await MovedContent(s, e));
-            eventRegistry.Get(PublishSiteCatalogEventId).Raised -= new EventNotificationHandler(new EventHandler<EventNotificationEventArgs>(async (s, e) => await OnPublishSiteCatalogEvent(s, e)));
-        }
-
-        protected virtual async Task OnPublishSiteCatalogEvent(object? sender, EventNotificationEventArgs e)
-        {
-            try
-            {
-                if (e.Param is not PublishSiteCatalogRequest request)
-                {
-                    _logger.LogWarning($"'{nameof(OnPublishSiteCatalogEvent)}' ignored. No site catalog id provided");
-                    return;
-                }
-
-                var siteCatalog = request.SiteCatalog;
-
-                if (siteCatalog == null && !string.IsNullOrWhiteSpace(request.SiteId))
-                {
-                    siteCatalogDirectory.TryGetSiteCatalog(request.SiteId, out siteCatalog);
-                }
-
-                if (siteCatalog == null)
-                {
-                    _logger.LogWarning($"'{nameof(OnPublishSiteCatalogEvent)}' ignored. No site catalog provided");
-                    return;
-                }
-
-                var context = new OperationContext(logger: _logger);
-
-                await siteCatalogPublisher.Publish(context, siteCatalog);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[Sitemap] Error occurred when publishing to site catalog.");
-            }
-        }
+        }        
 
         protected virtual async Task DoPublish(object? sender, ContentEventArgs e)
         {
@@ -153,9 +107,8 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
         {
             await DoPublish(sender, e);
 
-            eventRegistry
-                .Get(UpdatedSiteCatalogEventId)
-                .Raise(UpdatedSiteCatalogEventId, null);
+            // Broadcast event.
+            await eventPublisher.PublishAsync(new UpdatedSiteCatalogEvent());
         }
 
         private Task MovedContent(object? sender, ContentEventArgs e)
@@ -173,15 +126,15 @@ namespace Delaware.Optimizely.Sitemap.Core.Events
 
         private bool TryGetSiteCatalog(IContent forContent, out ISiteCatalog? siteCatalog)
         {
-            var siteDefinition = siteDefinitionResolver.GetByContent(forContent.ContentLink, true);
+            var application = applicationResolver.GetByContent(forContent.ContentLink, true);
 
-            if (siteDefinition == null)
+            if (application == null)
             {
                 siteCatalog = null;
                 return false;
             }
 
-            if (siteCatalogDirectory.TryGetSiteCatalog(siteDefinition.Name, out siteCatalog))
+            if (siteCatalogDirectory.TryGetSiteCatalog(application.Name, out siteCatalog))
             {
                 return true;
             }

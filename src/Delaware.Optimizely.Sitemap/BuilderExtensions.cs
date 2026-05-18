@@ -9,10 +9,10 @@ using Delaware.Optimizely.Sitemap.SitemapXml.DynamicContent;
 using Delaware.Optimizely.Sitemap.SitemapXml.Multiply;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using Delaware.Optimizely.Sitemap.SitemapXml.Storage;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Data;
 using EPiServer.Data.Dynamic;
-using EPiServer.Web;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -115,22 +115,22 @@ public static class BuilderExtensions
     }
 
     /// <summary>
-    /// Setup catalog publishing and XML sitemap serving for a <param name="siteDefinition">site</param>
-    /// in <param name="languages">an array of site languages</param>.
-    /// This is the default method to add a catalog for a <param name="siteDefinition">site</param>
+    /// Setup catalog publishing and XML sitemap serving for a <param name="application">application</param>
+    /// in <param name="languages">an array of application languages</param>.
+    /// This is the default method to add a catalog for a <param name="application">application</param>
     /// which calls <see cref="Sitemap.BuilderExtensions.AddSitemapCatalog"/> and <see cref="WithEmbeddedSitemap"/> internally.
     /// </summary>
-    /// <param name="siteDefinition">The site definition to create a catalog for.</param>
-    /// <param name="languages">*All* site's languages the sitemap needs to be published and served in.</param>
+    /// <param name="application">The application to create a catalog for.</param>
+    /// <param name="languages">*All* application's languages the sitemap needs to be published and served in.</param>
     public static IServiceProvider AddEmbeddedSitemapCatalog(
         this IServiceProvider serviceProvider,
-        SiteDefinition siteDefinition,
+        InProcessWebsite application,
         string[] languages,
         Action<ISiteCatalogBuilder>? configure = null)
     {
         serviceProvider
-            .AddSitemapCatalog(siteDefinition, languages, configure)
-            .WithEmbeddedSitemap(siteDefinition, languages);
+            .AddSitemapCatalog(application, languages, configure)
+            .WithEmbeddedSitemap(application, languages);
         
         return serviceProvider;
     }
@@ -138,20 +138,20 @@ public static class BuilderExtensions
     /// <summary>
     /// Enable the sitemap serving for a given <param name="site">site</param> in the specified <param name="languages">languages</param>.
     /// </summary>
-    /// <param name="site">The <param name="site">site</param> to enable embedded sitemap serving for.</param>
+    /// <param name="application">The <param name="application">application</param> to enable embedded sitemap serving for.</param>
     /// <param name="languages">The <param name="languages">languages</param> to serve the sitemap in.</param>
-    /// <exception cref="InvalidOperationException">Make sure not to add the same <param name="site">site</param> twice!</exception>
+    /// <exception cref="InvalidOperationException">Make sure not to add the same <param name="application">application</param> twice!</exception>
     public static IServiceProvider WithEmbeddedSitemap(
         this IServiceProvider serviceProvider,
-        SiteDefinition site, 
+        InProcessWebsite application, 
         string[] languages)
     {
         var registry = serviceProvider.GetRequiredService<ISitemapProcessorRegistry>();
         var contentLanguageSettingsHandler = serviceProvider.GetRequiredService<IContentLanguageSettingsHandler>();
 
-        if (registry.Processors.OfType<DefaultSitemapProcessor>().Any(x => string.Equals(x.SitemapId, site.Name)))
+        if (registry.Processors.OfType<DefaultSitemapProcessor>().Any(x => string.Equals(x.SitemapId, application.Name)))
         {
-            throw new InvalidOperationException($"Sitemap with name '{site.Name}' already exists in pipeline.");
+            throw new InvalidOperationException($"Sitemap with name '{application.Name}' already exists in pipeline.");
         }
 
         // Resolve custom implementations for IDynamicContentRootProcessor - if any.
@@ -163,7 +163,7 @@ public static class BuilderExtensions
         var configuredSitemapDataExtractor = new ConfiguredSitemapDataExtractor(contentLanguageSettingsHandler, config);
         var dynamicContentSitemapExtractor = new DynamicContentSitemapExtractor(dynamicContentRootProcessors);
         var sitemapProcessor = 
-            new DefaultSitemapProcessor(site, [configuredSitemapDataExtractor, dynamicContentSitemapExtractor]);
+            new DefaultSitemapProcessor(application, [configuredSitemapDataExtractor, dynamicContentSitemapExtractor]);
 
         registry.Processors.Add(sitemapProcessor);
 

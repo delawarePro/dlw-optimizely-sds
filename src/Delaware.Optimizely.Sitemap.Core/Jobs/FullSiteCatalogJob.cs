@@ -1,9 +1,7 @@
 ﻿using Delaware.Optimizely.Sitemap.Core.Builders;
-using Delaware.Optimizely.Sitemap.Core.Events;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.Shared;
 using EPiServer.DataAbstraction;
-using EPiServer.PlugIn;
 using EPiServer.Scheduler;
 using EPiServer.ServiceLocation;
 using Microsoft.Extensions.Logging;
@@ -14,7 +12,7 @@ namespace Delaware.Optimizely.Sitemap.Core.Jobs;
 /// Job is registered in Optimizely once assembly is referenced.
 /// Initial schedule is once a day. This can be configured in CMS after installation.
 /// </summary>
-[ScheduledPlugIn(
+[ScheduledJob(
     GUID = JobId,
     DisplayName = "[delaware sitemaps] Full publish (only) of site catalogs",
     IntervalType = ScheduledIntervalType.None,
@@ -25,7 +23,7 @@ public class FullSiteCatalogJob : ScheduledJobBase
     public const string JobId = "B101435E-0754-4054-9513-2D5D082C7DD0";
 
     protected readonly IBackgroundContextFactory BackgroundContextFactory;
-    protected readonly SiteCatalogEventHandler? SiteCatalogEventHandler;
+    protected readonly ISiteCatalogPublisher? SiteCatalogPublisher;
     protected readonly SiteCatalogDirectory? SiteCatalogDirectory;
     protected readonly ILogger<FullSiteCatalogJob> Logger;
     protected bool StopSignaled;
@@ -33,12 +31,12 @@ public class FullSiteCatalogJob : ScheduledJobBase
     public FullSiteCatalogJob(
         IBackgroundContextFactory backgroundContextFactory,
         ILoggerFactory loggerFactory,
-        SiteCatalogEventHandler? siteCatalogEventHandler = null,
+        ISiteCatalogPublisher? siteCatalogPublisher = null,
         SiteCatalogDirectory? siteCatalogDirectory = null)
     {
         Logger = loggerFactory.CreateLogger<FullSiteCatalogJob>();
         BackgroundContextFactory = backgroundContextFactory;
-        SiteCatalogEventHandler = siteCatalogEventHandler;
+        SiteCatalogPublisher = siteCatalogPublisher;
         SiteCatalogDirectory = siteCatalogDirectory;
 
         IsStoppable = true;
@@ -73,9 +71,9 @@ public class FullSiteCatalogJob : ScheduledJobBase
     {
         using var backgroundContext = BackgroundContextFactory.Create();
 
-        Logger.LogInformation($"Started {nameof(ScheduledJob)}.");
+        Logger.LogInformation("Started {JobName}.", nameof(ScheduledJob));
 
-        if (SiteCatalogEventHandler == null)
+        if (SiteCatalogPublisher == null)
         {
             var msg = "[Sitemap] Site catalog publishing not enabled.";
             Logger.LogWarning(msg);
@@ -97,7 +95,7 @@ public class FullSiteCatalogJob : ScheduledJobBase
         {
             if (!SiteCatalogDirectory.TryGetSiteCatalog(siteName, out var siteCatalog) || siteCatalog == null)
             {
-                Logger.LogWarning($"Inconsistent site catalog registration: catalog {siteName} was not found!");
+                Logger.LogWarning("Inconsistent site catalog registration: catalog '{SiteName}' was not found!", siteName);
 
                 continue;
             }
@@ -109,11 +107,11 @@ public class FullSiteCatalogJob : ScheduledJobBase
                 break;
             }
 
-            Logger.LogInformation($"Processing site catalog for site {siteName}.");
+            Logger.LogInformation("Processing site catalog for site '{SiteName}'.", siteName);
 
             OnStatusChanged($"[Sitemap] Triggering site catalog publish '{siteName}'.");
 
-            SiteCatalogEventHandler.PublishSiteCatalog(siteCatalog);
+            await SiteCatalogPublisher.Publish(new OperationContext(logger: Logger), siteCatalog);
 
             await OnSiteCatalogPublishedAsync(siteCatalog);
         }

@@ -5,7 +5,8 @@ using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 using Delaware.Optimizely.Sitemap.Core.Publishing.Mappers;
 using EPiServer;
-using EPiServer.Web;
+using EPiServer.Applications;
+using EPiServer.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,13 +37,18 @@ public static class BuilderExtensions
             .AddSingleton<ISiteCatalogPublisher>(sp => new DefaultSiteCatalogPublisher(
                     sp.GetRequiredService<SiteCatalogDirectory>(),
                     sp.GetRequiredService<ISiteCatalogClient>(),
-                    sp.GetRequiredService<ISiteDefinitionRepository>(),
-                    sp.GetRequiredService<ISiteDefinitionResolver>(),
+                    sp.GetRequiredService<IApplicationRepository>(),
+                    sp.GetRequiredService<IApplicationResolver>(),
                     sp.GetRequiredService<IContentLoader>(),
                     sp.GetRequiredService<ILoggerFactory>()
             ))
             .AddTransient<ISiteCatalogClient, SiteCatalogNullClient>() // Either replace this with the full sitemap client or embedded sitemap client.
             .AddSingleton<SiteCatalogEventHandler>();
+
+        services
+            .AddCmsEvents()
+            .AddCmsEventType<PublishSiteCatalogRequestEvent>()
+            .AddCmsEventType<UpdatedSiteCatalogEvent>();
 
         return services;
     }
@@ -63,22 +69,22 @@ public static class BuilderExtensions
     }
 
     /// <summary>
-    /// Register a catalog for a <param name="siteDefinition">site</param>.
-    /// This will include the <param name="siteDefinition">site</param> in the catalog publishing process.
+    /// Register a catalog for a <param name="application">application</param>.
+    /// This will include the <param name="application">application</param> in the catalog publishing process.
     /// </summary>
     /// <param name="serviceProvider"></param>
-    /// <param name="siteDefinition">The site to add a catalog for.</param>
-    /// <param name="languages">*All* languages to include in sitemap for this site.</param>
+    /// <param name="application">The application to add a catalog for.</param>
+    /// <param name="languages">*All* application's languages to include in sitemap for this application.</param>
     /// <param name="configure"></param>
     public static IServiceProvider AddSitemapCatalog(
         this IServiceProvider serviceProvider,
-        SiteDefinition siteDefinition,
+        InProcessWebsite application,
         string[] languages,
         Action<ISiteCatalogBuilder>? configure = null)
     {
         var siteCatalogDirectory = serviceProvider.GetRequiredService<SiteCatalogDirectory>();
 
-        siteCatalogDirectory.AddSiteCatalog(siteDefinition, configure, languages);
+        siteCatalogDirectory.AddSiteCatalog(application, configure, languages);
 
         return serviceProvider;
     }

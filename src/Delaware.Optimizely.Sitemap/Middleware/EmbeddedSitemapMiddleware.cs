@@ -8,9 +8,9 @@ using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using Delaware.Optimizely.Sitemap.SitemapXml.Models;
 using Delaware.Optimizely.Sitemap.SitemapXml.Output;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Framework.Blobs;
-using EPiServer.Web;
 using EPiServer.Web.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,31 +24,40 @@ public class EmbeddedSitemapMiddleware(
     SiteCatalogDirectory siteCatalogDirectory,
     IEmbeddedSiteCatalogClient embeddedSiteCatalogClient,
     IUrlResolver urlResolver,
+    IApplicationResolver applicationResolver,
     IOptions<EmbeddedSitemapOptions> options)
 {
     public async Task InvokeAsync(HttpContext context)
     {
+        var application = applicationResolver.GetByContext();
+        if(application is not InProcessWebsite)
+        {
+            await next(context);
+            return;
+        }
+
+        var siteName = application.Name;
         SitemapStateV2 stateV2;
 
         if (context.Request.Path.StartsWithSegments(options.Value.SitemapEntryPath, StringComparison.InvariantCultureIgnoreCase))
         {
-            stateV2 = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
+            stateV2 = embeddedSiteCatalogClient.GetState(siteName);
 
             // Serve sitemap index.
-            await WriteSitemapIndexAsync(context, stateV2);
+            await WriteSitemapIndexAsync(context, stateV2, siteName);
 
             return;
         }
 
         if (context.Request.Path.Value != null && context.Request.Path.Value.EndsWith(".xml"))
         {
-            stateV2 = embeddedSiteCatalogClient.GetState(SiteDefinition.Current.Name);
+            stateV2 = embeddedSiteCatalogClient.GetState(siteName);
 
             // Serve sitemap page.
             if (TryParseSitemapPageNumber(context.Request.Path, out var sitemapPageIndex, out var isDelta)
                 && isDelta != null && sitemapPageIndex != null)
             {
-                var languageGroupKey = DetermineLanguageGroupKey(context);
+                var languageGroupKey = DetermineLanguageGroupKey(context, siteName);
 
                 if (TryGetPageLocation(stateV2, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
                     && location != null
@@ -162,17 +171,17 @@ public class EmbeddedSitemapMiddleware(
         return false;
     }
 
-    private async Task<bool> WriteSitemapIndexAsync(HttpContext context, SitemapStateV2 stateV2)
+    private async Task<bool> WriteSitemapIndexAsync(HttpContext context, SitemapStateV2 stateV2, string siteName)
     {
         // Are there any sitemap entries?
-        var totalEntryCount = embeddedSiteCatalogClient.GetCatalogEntryCount(SiteDefinition.Current.Name);
+        var totalEntryCount = embeddedSiteCatalogClient.GetCatalogEntryCount(siteName);
 
         if (totalEntryCount <= 0)
         {
             return false;
         }
 
-        var languageGroupKey = DetermineLanguageGroupKey(context);
+        var languageGroupKey = DetermineLanguageGroupKey(context, siteName);
 
         // Get URI from context.
         var baseUri = GetBaseUri(context);
@@ -230,11 +239,11 @@ public class EmbeddedSitemapMiddleware(
         httpContext.Response.Headers["Expires"] = "0";
     }
 
-    private SitemapLanguageGroupKey DetermineLanguageGroupKey(HttpContext httpContext)
+    private SitemapLanguageGroupKey DetermineLanguageGroupKey(HttpContext httpContext, string siteName)
     {
         var currentCi = DetermineCurrentCultureInfo(httpContext);
 
-        if (siteCatalogDirectory.TryGetSiteCatalog(SiteDefinition.Current.Name, out var siteCatalog) && siteCatalog != null)
+        if (siteCatalogDirectory.TryGetSiteCatalog(siteName, out var siteCatalog) && siteCatalog != null)
         {
             var matchingLanguageGroup =
                 siteCatalog

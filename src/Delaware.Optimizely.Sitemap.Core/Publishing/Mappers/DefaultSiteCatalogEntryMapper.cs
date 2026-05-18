@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using Delaware.Optimizely.Sitemap.Core.Client;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
 using EPiServer.Core.Routing.Internal;
 using EPiServer.Web;
@@ -24,7 +25,7 @@ public class DefaultSiteCatalogEntryMapper : AbstractSiteCatalogEntryMapper
         _contentUrlResolver = contentUrlResolver;
     }
 
-    protected override void Map(SiteCatalogItem item, SiteCatalogEntry entry, IOperationContext context)
+    protected override void Map(SiteCatalogItem item, SiteCatalogEntry entry, InProcessWebsite application, IOperationContext context)
     {
         // Try to use publish date as 'modified date'.
         if (item.Content is PageData page)
@@ -41,17 +42,19 @@ public class DefaultSiteCatalogEntryMapper : AbstractSiteCatalogEntryMapper
         entry.ContentTypeId = item.Content.ContentTypeID;
     }
 
-    protected override void Map(string locale, IContent content, LocalizedSiteCatalogEntry entry, IOperationContext context)
+    protected override void Map(string locale, IContent content, LocalizedSiteCatalogEntry entry, InProcessWebsite application, IOperationContext context)
     {
-        // Determine host. Use the one from the site definition set by the site switcher; *not* the one from the current request!
-        var host = SiteDefinition.Current.GetHosts(CultureInfo.GetCultureInfo(locale), true).FirstOrDefault();
+        var culture = CultureInfo.GetCultureInfo(locale);
+
+        var hosts = application.GetHosts(culture, true);
+        var host =  hosts.FirstOrDefault((ApplicationHost h) => h.Type == ApplicationHostType.Primary) ?? hosts.FirstOrDefault((ApplicationHost h) => h.Type == ApplicationHostType.Default);
 
         var options = new UrlGeneratorOptions()
             .SetContextMode(ContextMode.Default)
             .SetForceCanonicalUrl()
             .SetForceAbsoluteUrl()
-            .SetLanguage(CultureInfo.GetCultureInfo(locale))
-            .SetCurrentHost(host?.Url.Authority);
+            .SetLanguage(culture)
+            .SetCurrentHost(host?.Url?.Authority);
 
         var generatedUrl = _contentUrlResolver.Generate(content.ContentLink, options);
 

@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using EPiServer;
+using EPiServer.Applications;
 using EPiServer.Core;
-using EPiServer.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Delaware.Optimizely.Sitemap.Core.Builders;
@@ -11,7 +11,7 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
 {
     private readonly IDictionary<string, ISiteCatalog> _siteCatalogs = new Dictionary<string, ISiteCatalog>(StringComparer.OrdinalIgnoreCase);
 
-    private readonly ConcurrentDictionary<int, List<SiteDefinition>> _blockRootMap = new();
+    private readonly ConcurrentDictionary<int, List<InProcessWebsite>> _blockRootMap = new();
 
     private readonly IContentLoader _contentLoader = serviceProvider.GetRequiredService<IContentLoader>();
 
@@ -22,20 +22,20 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
     ///  Add a site catalog to publish to sitemap processing.
     /// </summary>
     /// <returns></returns>
-    public SiteCatalogDirectory AddSiteCatalog(SiteDefinition siteDefinition,
+    public SiteCatalogDirectory AddSiteCatalog(InProcessWebsite application,
         Action<ISiteCatalogBuilder>? configure = null, string[]? languages = null)
     {
-        if (siteDefinition == null)
+        if (application == null)
         {
-            throw new ArgumentNullException(nameof(siteDefinition), "Site definition cannot be null.");
+            throw new ArgumentNullException(nameof(application), "Application cannot be null.");
         }
 
-        var siteCatalog = new DefaultSiteCatalogBuilder(serviceProvider, siteDefinition, languages);
+        var siteCatalog = new DefaultSiteCatalogBuilder(serviceProvider, application, languages);
         configure?.Invoke(siteCatalog);
 
         var catalog = siteCatalog.Build();
 
-        AddSiteCatalog(siteDefinition, catalog);
+        AddSiteCatalog(application, catalog);
 
         return this;
     }
@@ -44,27 +44,27 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
     ///  Add a site catalog to publish to sitemap processing.
     /// </summary>
     /// <returns></returns>
-    public SiteCatalogDirectory AddSiteCatalog(SiteDefinition siteDefinition, ISiteCatalog siteCatalog)
+    public SiteCatalogDirectory AddSiteCatalog(InProcessWebsite application, ISiteCatalog siteCatalog)
     {
-        if (siteDefinition == null)
+        if (application == null)
         {
-            throw new ArgumentNullException(nameof(siteDefinition), "Site definition cannot be null.");
+            throw new ArgumentNullException(nameof(application), "Application cannot be null.");
         }
 
-        _siteCatalogs[siteDefinition.Name] = siteCatalog;
+        _siteCatalogs[application.Name] = siteCatalog;
 
         foreach (var item in siteCatalog.GetBlockRoots())
         {
             if (_blockRootMap.TryGetValue(item, out var existingMap))
             {
-                if (!existingMap.Contains(siteDefinition))
+                if (!existingMap.Contains(application))
                 {
-                    _blockRootMap[item].Add(siteDefinition);
+                    _blockRootMap[item].Add(application);
                 }
             }
             else
             {
-                _blockRootMap[item] = new List<SiteDefinition> { siteDefinition };
+                _blockRootMap[item] = new List<InProcessWebsite> { application };
             }
         }
 
@@ -76,14 +76,14 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
         return _siteCatalogs.TryGetValue(siteName, out value);
     }
 
-    public bool TryGetSiteUsages(IContent forBlock, out IList<SiteDefinition> bySites)
+    public bool TryGetSiteUsages(IContent forBlock, out IList<InProcessWebsite> bySites)
     {
         if (forBlock is not BlockData)
         {
             throw new ArgumentException(nameof(forBlock));
         }
 
-        var result = new List<SiteDefinition>();
+        var result = new List<InProcessWebsite>();
         var ancestorsAndSelf = _contentLoader
             .GetAncestors(forBlock.ContentLink)
             .Select(c => c.ContentLink.ID)
@@ -100,7 +100,7 @@ public class SiteCatalogDirectory(IServiceProvider serviceProvider)
             }
         }
 
-        bySites = result.DistinctBy(d => d.Id).ToList();
+        bySites = result.DistinctBy(d => d.Name).ToList();
 
         return result.Count > 0;
     }

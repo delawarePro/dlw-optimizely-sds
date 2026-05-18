@@ -1,7 +1,7 @@
 ﻿using Delaware.Optimizely.Sitemap.Core;
 using Delaware.Optimizely.Sitemap.Core.Publishing;
 using Delaware.Optimizely.Sitemap.SitemapXml;
-using EPiServer.Web;
+using EPiServer.Applications;
 
 namespace Delaware.Optimizely.Sitemap;
 
@@ -10,23 +10,23 @@ public class DefaultSitemapProcessor : ISiteResourceProcessor
     /// <summary>
     /// Logical sitemap identifier, this has nothing to do with file names.
     /// </summary>
-    public string SitemapId => SiteDefinition.Name;
+    public string SitemapId => Application.Name;
 
-    public SiteDefinition SiteDefinition { get; }
+    public InProcessWebsite Application { get; }
 
     public IReadOnlyCollection<ISitemapDataExtractor> Extractors { get; private set; }
 
     public string? SitemapUrl { get; }
 
     public DefaultSitemapProcessor(
-        SiteDefinition siteDefinition,
+        InProcessWebsite application,
         IReadOnlyCollection<ISitemapDataExtractor> extractors,
         string? sitemapUrl = null)
     {
-        if (string.IsNullOrWhiteSpace(siteDefinition.Name))
-            throw new ArgumentException($"Could not determine site catalog ID for site definition {siteDefinition.Id}");
+        if (string.IsNullOrWhiteSpace(application.Name))
+            throw new ArgumentException($"Could not determine site catalog ID for application {application.Name}");
 
-        SiteDefinition = siteDefinition;
+        Application = application;
         Extractors = extractors;
         SitemapUrl = sitemapUrl;
     }
@@ -40,7 +40,7 @@ public class DefaultSitemapProcessor : ISiteResourceProcessor
             return result;
         }
 
-        if (!SitemapId.Equals(SiteDefinition.Current.Name))
+        if (!SitemapId.Equals(Application.Name))
         {
             return new List<SiteResourceUrls>(0);
         }
@@ -60,6 +60,6 @@ public class DefaultSitemapProcessor : ISiteResourceProcessor
 
     public bool CanProcess(ISiteCatalog forCatalog)
     {
-        return forCatalog.SiteDefinition == SiteDefinition;
+        return forCatalog.Application == Application;
     }
 }
