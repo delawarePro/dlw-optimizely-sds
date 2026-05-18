@@ -7,6 +7,9 @@
     <File Path="nuget.config" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Test/">
+    <Project Path="test/Alloy/Alloy.csproj" />
+  </Folder>
   <Project Path="src/Delaware.Optimizely.Sitemap.Core/Delaware.Optimizely.Sitemap.Core.csproj" />
   <Project Path="src/Delaware.Optimizely.Sitemap.Shared/Delaware.Optimizely.Sitemap.Shared.csproj" />
   <Project Path="src/Delaware.Optimizely.Sitemap/Delaware.Optimizely.Sitemap.csproj" />

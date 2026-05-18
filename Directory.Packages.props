@@ -19,5 +19,6 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.7" />
     <PackageVersion Include="Microsoft.SourceLink.AzureRepos.Git" Version="10.0.203" />
     <PackageVersion Include="Moq" Version="4.17.2" />
+	<PackageVersion Include="Wangkanai.Detection" Version="8.7.0" />
   </ItemGroup>
 </Project>
