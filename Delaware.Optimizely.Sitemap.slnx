@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="license.txt" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/Delaware.Optimizely.Sitemap.Core/Delaware.Optimizely.Sitemap.Core.csproj" />
+  <Project Path="src/Delaware.Optimizely.Sitemap.Shared/Delaware.Optimizely.Sitemap.Shared.csproj" />
+  <Project Path="src/Delaware.Optimizely.Sitemap/Delaware.Optimizely.Sitemap.csproj" />
+</Solution>
