@@ -13,12 +13,16 @@
   </ItemGroup>
   
   <ItemGroup>
-	<PackageReference Include="EPiServer.CMS" />
-	<PackageReference Include="EPiServer.Cms.UI.AspNetIdentity" />
-	<PackageReference Include="Wangkanai.Detection" />
+    <PackageReference Include="EPiServer.CMS" />
+    <PackageReference Include="EPiServer.Cms.UI.AspNetIdentity" />
+    <PackageReference Include="Wangkanai.Detection" />
   </ItemGroup>
   
   <ItemGroup>
     <EmbeddedResource Include="Resources\Translations\**\*" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <EmbeddedResource Include="Infrastructure\LocalDb\Databases\Scripts\EPiServer.Cms.Core.sql" />
   </ItemGroup>
 </Project>

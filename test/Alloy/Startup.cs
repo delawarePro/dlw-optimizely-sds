@@ -1,4 +1,5 @@
 using Alloy.Extensions;
+using Alloy.Infrastructure.LocalDb.Builders;
 using EPiServer.Cms.UI.AspNetIdentity;
 using EPiServer.Data;
 using EPiServer.DependencyInjection;
@@ -7,15 +8,18 @@ using EPiServer.Web.Routing;
 
 namespace Alloy;
 
-public class Startup(IWebHostEnvironment webHostingEnvironment)
+public class Startup(IConfiguration configuration, IWebHostEnvironment webHostingEnvironment)
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        if (webHostingEnvironment.IsDevelopment())
+        if (webHostingEnvironment.IsDevOrAutomatedTest())
         {
             AppDomain.CurrentDomain.SetData("DataDirectory", Path.Combine(webHostingEnvironment.ContentRootPath, "App_Data"));
 
             services.Configure<SchedulerOptions>(options => options.Enabled = false);
+
+            // Wire local db for development and automated testing
+            services.AddLocalDbHost(configuration);
         }
 
         services.Configure<DataAccessOptions>(o => o.UpdateDatabaseCompatibilityLevel = true);
@@ -57,6 +61,6 @@ public class Startup(IWebHostEnvironment webHostingEnvironment)
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapContent();
-        });
+        });                       
     }
 }
