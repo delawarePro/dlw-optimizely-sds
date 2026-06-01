@@ -1,0 +1,10 @@
+name: "Before Integration Tests"
+description: "Configures the environment before integration tests run."
+
+runs:
+    using: composite
+    steps:
+        - name: Configure integration test connection string
+          shell: bash
+          run: |
+              echo "inttest_ConnectionStrings__EPiServerDB=Server=localhost,1433;Database=alloy.test.cms.inttest;User ID=sa;Password=${{ env.MSSQL_SA_PASSWORD }};TrustServerCertificate=True;MultipleActiveResultSets=True" >> $GITHUB_ENV

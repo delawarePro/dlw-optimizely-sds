@@ -32,10 +32,24 @@ on:
 
     merge_group:
 
+env:
+    MSSQL_SA_PASSWORD: ABCDefgh1234#!$%
+
 jobs:
     build:
         name: "Build and Publish"
         runs-on: ubuntu-latest
+        services:
+            mssql:
+                image: mcr.microsoft.com/mssql/server:2022-latest
+                ports:
+                    - 1433:1433
+                env:
+                    ACCEPT_EULA: Y
+                    # Password needs to match complexity rules: https://learn.microsoft.com/en-us/sql/relational-databases/security/password-policy?view=sql-server-ver16
+                    # At least 2 uppercase chars, 2 lowercase chars, 2 digits, 2 non-alphanumerics
+                    MSSQL_SA_PASSWORD: ${{ env.MSSQL_PASSWORD }}
+                    MSSQL_PID: Developer
         steps:
             - uses: actions/checkout@v5
 
@@ -43,7 +57,7 @@ jobs:
               id: "conventions"
               with:
                   noTests: ${{ inputs.noTests }}
-                  prerelease: ${{ inputs.prerelease }} 
+                  prerelease: ${{ inputs.prerelease }}
 
             - uses: delawarePro/platina-scripts/github/actions/dotnet-ci@refs/tags/2.6.0
               with:
