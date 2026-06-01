@@ -1,11 +1,13 @@
 ﻿using EPiServer;
 using EPiServer.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.Core.Publishing.ContentProviders;
 
 public class DefaultSiteCatalogPageProvider(
     IContentLoader contentLoader,
-    IContentLanguageSettingsHandler contentLanguageSettingsHandler)
+    IContentLanguageSettingsHandler contentLanguageSettingsHandler,
+    ILogger<DefaultSiteCatalogPageProvider> logger)
     : SiteCatalogContentProviderBase(contentLoader, contentLanguageSettingsHandler), ISiteCatalogPageProvider
 {
     public virtual async Task<SiteCatalogItemsResult> GetPages(ContentReference root, string? next, IOperationContext context)
@@ -33,9 +35,33 @@ public class DefaultSiteCatalogPageProvider(
             descendants.Add(root);
         }
 
-        var items = descendants.Any() ? ContentLoader
-                .GetItems(descendants, LanguageSelector.MasterLanguage())
-            : null;
+        IEnumerable<IContent>? items = null;
+        if (descendants.Any())
+        {
+            try
+            {
+                items = ContentLoader.GetItems(descendants, LanguageSelector.MasterLanguage());
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "GetItems failed for batch, falling back to per-item loading to skip ghost items.");
+                items = descendants
+                    .Select(reference =>
+                    {
+                        try
+                        {
+                            return ContentLoader.Get<IContent>(reference, LanguageSelector.MasterLanguage());
+                        }
+                        catch (Exception itemEx)
+                        {
+                            logger.LogWarning(itemEx, "Skipping ghost or unresolvable content reference {ContentReference}.", reference);
+                            return null;
+                        }
+                    })
+                    .Where(x => x != null)
+                    .Select(x => x!);
+            }
+        }
 
         var pages = items != null
             ? await GetContent(items.ToArray())

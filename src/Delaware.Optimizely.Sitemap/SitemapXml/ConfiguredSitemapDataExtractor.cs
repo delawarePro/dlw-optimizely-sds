@@ -4,21 +4,26 @@ using Delaware.Optimizely.Sitemap.Shared;
 using Delaware.Optimizely.Sitemap.Shared.Models;
 using Delaware.Optimizely.Sitemap.Shared.Utilities;
 using EPiServer.Core;
+using EPiServer.DataAbstraction;
+using Microsoft.Extensions.Logging;
 
 namespace Delaware.Optimizely.Sitemap.SitemapXml;
 
 public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
 {
     private readonly IContentLanguageSettingsHandler _contentLanguageSettingsHandler;
+    private readonly ILogger<ConfiguredSitemapDataExtractor> _logger;
     protected SitemapDataExtractorConfig[] Configurations { get; }
 
     public ConfiguredSitemapDataExtractor(
         IContentLanguageSettingsHandler contentLanguageSettingsHandler,
+        ILogger<ConfiguredSitemapDataExtractor> logger,
         params SitemapDataExtractorConfig[] configurations)
     {
         if (configurations == null || configurations.Length == 0)
             throw new ArgumentNullException(nameof(configurations));
         _contentLanguageSettingsHandler = contentLanguageSettingsHandler;
+        _logger = logger;
 
         Configurations = configurations;
     }
@@ -126,12 +131,22 @@ public class ConfiguredSitemapDataExtractor : ISitemapDataExtractor
     {
         if (resource is DefaultSiteResource defaultSiteResource)
         {
-            var settings =
-                _contentLanguageSettingsHandler.Get(defaultSiteResource.SourceId);
+            IEnumerable<ContentLanguageSetting>? settings;
+
+            try
+            {
+                settings = _contentLanguageSettingsHandler.Get(defaultSiteResource.SourceId);
+            }
+            catch (ContentNotFoundException ex)
+            {
+                // Ghost content or content with 0 language branches will throw here.
+                _logger.LogWarning(ex, "Skipping ghost content or content with 0 language branches for {ContentReference}.", defaultSiteResource.SourceId);
+                yield break;
+            }
 
             foreach (var contentLanguageSetting in settings.Where(cl => cl.LanguageBranch.Equals(language)))
             {
-                foreach (string s in contentLanguageSetting.LanguageBranchFallback)
+                foreach (var s in contentLanguageSetting.LanguageBranchFallback)
                 {
                     yield return s;
                 }
