@@ -25,4 +25,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Infrastructure\LocalDb\Databases\Scripts\EPiServer.Cms.Core.sql" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Delaware.Optimizely.Sitemap.Core\Delaware.Optimizely.Sitemap.Core.csproj" />
+    <ProjectReference Include="..\..\src\Delaware.Optimizely.Sitemap\Delaware.Optimizely.Sitemap.csproj" />
+  </ItemGroup>
 </Project>
