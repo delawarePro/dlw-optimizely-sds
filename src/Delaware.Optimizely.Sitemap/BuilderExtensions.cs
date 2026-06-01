@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Delaware.Optimizely.Sitemap;
@@ -160,7 +161,10 @@ public static class BuilderExtensions
         var config = new SitemapDataExtractorConfig()
             .WithMultiplier(new AllLanguagesMultiplier(languages));
 
-        var configuredSitemapDataExtractor = new ConfiguredSitemapDataExtractor(contentLanguageSettingsHandler, config);
+        var configuredSitemapDataExtractor = new ConfiguredSitemapDataExtractor(
+            contentLanguageSettingsHandler,
+            serviceProvider.GetRequiredService<ILogger<ConfiguredSitemapDataExtractor>>(),
+            config);
         var dynamicContentSitemapExtractor = new DynamicContentSitemapExtractor(dynamicContentRootProcessors);
         var sitemapProcessor = 
             new DefaultSitemapProcessor(application, [configuredSitemapDataExtractor, dynamicContentSitemapExtractor]);
