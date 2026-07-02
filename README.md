@@ -50,16 +50,22 @@ This enables the Sitemap code. The next section shows how to configure this per 
 
 ## Site configuration
 
-The Sitemap can be enabled per site instance. Add this for each site to enable Sitemap, where _site_ is a site definition:
+The Sitemap can be enabled per site instance. Add this for each site to enable Sitemap, where _application_ is an `InProcessWebsite`:
 
 ```csharp
-serviceProvider.AddEmbeddedSitemapCatalog(site, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
+serviceProvider.AddEmbeddedSitemapCatalog(application, new[]{"nl","nl-be","en"}, catalog => catalog.WithDefaults());
 ```
+
+> **Optimizely CMS 13 note:** the catalog registration methods (`AddEmbeddedSitemapCatalog`, `AddSitemapCatalog`, `WithEmbeddedSitemap`) take an `EPiServer.Applications.InProcessWebsite` instead of the `SiteDefinition` used in CMS 12. Resolve it from `IApplicationRepository` by application name rather than using `SiteDefinition.Current`.
 
 For example, in an Alloy sample site, in the Startup's Configure(...) method:
 
 ```csharp
-app.ApplicationServices.AddEmbeddedSitemapCatalog(SiteDefinition.Current, new[] { "en", "sv" }, catalog => catalog.WithDefaults());
+var application = app.ApplicationServices
+    .GetRequiredService<IApplicationRepository>()
+    .Get<InProcessWebsite>("alloy");
+
+app.ApplicationServices.AddEmbeddedSitemapCatalog(application, new[] { "en", "sv" }, catalog => catalog.WithDefaults());
 ```
 
 This configures the site catalog with all default and recommended settings.
@@ -70,14 +76,14 @@ If the default settings don't cover all required Sitemap scenarios, the defaults
 
 ```csharp
 serviceProvider
-    .AddSitemapCatalog(site, new [] { /* languages for site */ "en", "nl-be" }
+    .AddSitemapCatalog(application, new [] { /* languages for application */ "en", "nl-be" }
             catalog => catalog
         .WithDefaultBlocks()
         .WithDefaultMapping()
         .WithBlockRoots(BlockRoots)
         .WithDefaultFilters()
         .WithDefaultPageProvider())
-    .WithEmbeddedSitemap(site, languages);
+    .WithEmbeddedSitemap(application, languages);
 ```
 
 #### WithDefaultBlocks
@@ -123,7 +129,7 @@ WithPageProvider(ISiteCatalogPageProvider pageProvider)
 
 ### WithLanguageGroup
 
-Some scenarios require the sitemap files to be split up. A real-world scenario, where a single site definition is hosted for multiple hosts/domains, would benefit from splitting up the sitemap content.
+Some scenarios require the sitemap files to be split up. A real-world scenario, where a single application is hosted for multiple hosts/domains, would benefit from splitting up the sitemap content.
 
 Taking the Alloy site as example, the same site could be hosted for `alloysite.com` in _English_ and `alloysite.se` in _Swedish_.
 
@@ -133,7 +139,7 @@ This requires the following changes when adding the sitemap on startup: while st
 var languages = new[] { "en", "sv" };
 
 app.ApplicationServices
-    .AddEmbeddedSitemapCatalog(SiteDefinition.Current, languages, catalog =>
+    .AddEmbeddedSitemapCatalog(application, languages, catalog =>
         catalog
             .WithLanguageGroup(["en"], "sitemap-alloy-en")
             .WithLanguageGroup(["sv"], "sitemap-alloy-se")
