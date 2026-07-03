@@ -30,7 +30,7 @@ public class EmbeddedSitemapMiddleware(
     public async Task InvokeAsync(HttpContext context)
     {
         var application = applicationResolver.GetByContext();
-        if(application is not InProcessWebsite)
+        if (application is not InProcessWebsite)
         {
             await next(context);
             return;
@@ -39,42 +39,56 @@ public class EmbeddedSitemapMiddleware(
         var siteName = application.Name;
         SitemapStateV2 stateV2;
 
-        if (context.Request.Path.StartsWithSegments(options.Value.SitemapEntryPath, StringComparison.InvariantCultureIgnoreCase))
+        try
         {
-            stateV2 = embeddedSiteCatalogClient.GetState(siteName);
-
-            // Serve sitemap index.
-            await WriteSitemapIndexAsync(context, stateV2, siteName);
-
-            return;
-        }
-
-        if (context.Request.Path.Value != null && context.Request.Path.Value.EndsWith(".xml"))
-        {
-            stateV2 = embeddedSiteCatalogClient.GetState(siteName);
-
-            // Serve sitemap page.
-            if (TryParseSitemapPageNumber(context.Request.Path, out var sitemapPageIndex, out var isDelta)
-                && isDelta != null && sitemapPageIndex != null)
+            if (context.Request.Path.StartsWithSegments(options.Value.SitemapEntryPath, StringComparison.InvariantCultureIgnoreCase))
             {
-                var languageGroupKey = DetermineLanguageGroupKey(context, siteName);
+                stateV2 = embeddedSiteCatalogClient.GetState(siteName);
 
-                if (TryGetPageLocation(stateV2, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
-                    && location != null
-                    && TryGetMediaByUrl(location, out var blob)
-                    && blob != null)
+                // Serve sitemap index.
+                await WriteSitemapIndexAsync(context, stateV2, siteName);
+
+                return;
+            }
+
+            if (context.Request.Path.Value != null && context.Request.Path.Value.EndsWith(".xml"))
+            {
+                stateV2 = embeddedSiteCatalogClient.GetState(siteName);
+
+                // Serve sitemap page.
+                if (TryParseSitemapPageNumber(context.Request.Path, out var sitemapPageIndex, out var isDelta)
+                    && isDelta != null && sitemapPageIndex != null)
                 {
-                    await using var stream = blob.OpenRead();
-                    await using var gzipStream = new GZipStream(context.Response.Body, CompressionMode.Compress);
+                    var languageGroupKey = DetermineLanguageGroupKey(context, siteName);
 
-                    context.Response.ContentType = "application/xml";
-                    context.Response.Headers["Content-Encoding"] = "gzip";
+                    if (TryGetPageLocation(stateV2, languageGroupKey, isDelta.Value, sitemapPageIndex.Value, out var location)
+                        && location != null
+                        && TryGetMediaByUrl(location, out var blob)
+                        && blob != null)
+                    {
+                        context.Response.ContentType = "application/xml";
+                        context.Response.Headers.ContentEncoding = "gzip";
 
-                    await stream.CopyToAsync(gzipStream);
+                        await using var stream = blob.OpenRead();
+                        await using var gzipStream = new GZipStream(context.Response.Body, CompressionMode.Compress, leaveOpen: false);
 
-                    return;
+                        await stream.CopyToAsync(gzipStream, context.RequestAborted);
+                        await gzipStream.FlushAsync(context.RequestAborted);
+
+                        return;
+                    }
                 }
             }
+        }
+        catch (IOException ex) when (ex.Message.Contains("reset", StringComparison.OrdinalIgnoreCase))
+        {
+            // Client disconnected - this is expected behavior, log if needed but don't throw
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            // Request was cancelled (timeout or client disconnect) - this is expected
+            return;
         }
 
         await next(context);
@@ -195,7 +209,7 @@ public class EmbeddedSitemapMiddleware(
         await sitemapXmlWriter.WriteSitemapIndex(index, memory);
 
         // Reset the stream position.
-        memory.Seek(0, SeekOrigin.Begin); 
+        memory.Seek(0, SeekOrigin.Begin);
 
         // Convert stream to string.
         using var reader = new StreamReader(memory);
